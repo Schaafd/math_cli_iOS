@@ -175,6 +175,10 @@ struct CalculatorView: View {
             historyManager?.setCurrentSession(session)
             viewModel.historyManager = historyManager
             VariableStore.shared.setSession(session.id)
+
+            // Load session history to restore output lines
+            viewModel.loadSessionHistory(session)
+
             print("🔍 CalculatorView.setupCurrentSession: Setup complete for session: \(session.name)")
         } else {
             print("🔍 CalculatorView.setupCurrentSession: WARNING - No active session!")
@@ -200,8 +204,10 @@ struct CalculatorView: View {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
 
-        // Clear output (optional - could preserve per session)
-        viewModel.outputLines.removeAll()
+        // Load session history to restore output lines
+        viewModel.loadSessionHistory(session)
+
+        // Add session switch notification
         viewModel.addOutputLine("📋 Switched to \(session.name)", type: .info)
 
         // Show variable count if any

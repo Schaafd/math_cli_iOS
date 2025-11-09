@@ -60,24 +60,22 @@ class SessionManager {
     }
 
     func createNewSession(name: String? = nil) -> Session {
-        // Close any existing active session
-        if let current = currentSession {
-            current.isActive = false
-        }
+        // Don't close existing sessions - keep them as active tabs
+        // Just create a new active session and add it to the tabs
 
         let sessionName = name ?? "Session \(Date().formatted(date: .abbreviated, time: .shortened))"
         let session = Session(name: sessionName, isActive: true)
-        
+
         modelContext.insert(session)
         currentSession = session
-        
+
         do {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
         } catch {
             print("Failed to save new session: \(error)")
         }
-        
+
         return session
     }
 

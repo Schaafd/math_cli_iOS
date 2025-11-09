@@ -51,10 +51,8 @@ class CalculatorViewModel: ObservableObject {
         self.variableStore = VariableStore.shared
         self.historyManager = historyManager
 
-        // Add welcome message
-        addOutputLine("Welcome to Math CLI", type: .info)
-        addOutputLine("Type an operation or 'help' for commands", type: .info)
-        addOutputLine("", type: .info)
+        // Welcome message will be added by loadSessionHistory when session is set up
+        // This keeps the init clean and allows proper history restoration
     }
 
     func executeCommand() {
@@ -131,6 +129,26 @@ class CalculatorViewModel: ObservableObject {
         // Limit output lines to prevent memory issues
         if outputLines.count > 500 {
             outputLines.removeFirst(100)
+        }
+    }
+
+    func loadSessionHistory(_ session: Session) {
+        // Clear current output
+        outputLines.removeAll()
+
+        // Add welcome message
+        addOutputLine("Welcome to Math CLI", type: .info)
+        addOutputLine("Type an operation or 'help' for commands", type: .info)
+        addOutputLine("", type: .info)
+
+        // Load history entries from session and recreate output lines
+        let sortedEntries = session.entries.sorted(by: { $0.timestamp < $1.timestamp })
+        for entry in sortedEntries {
+            // Add command line
+            addOutputLine("> \(entry.command)", type: .command)
+            // Add result line (with original timestamp)
+            let resultLine = OutputLine(type: .result, text: entry.result, timestamp: entry.timestamp)
+            outputLines.append(resultLine)
         }
     }
 
