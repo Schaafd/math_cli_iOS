@@ -26,11 +26,32 @@ struct UserFunction: Codable {
 class FunctionRegistry {
     static let shared = FunctionRegistry()
 
+    // Current session ID for scoping functions
+    private var currentSessionId: UUID?
+
     private var functions: [String: UserFunction] = [:]
     private let persistenceKey = "MathCLI.UserFunctions"
 
     private init() {
-        loadFunctions()
+        // Functions will be loaded when session is set
+    }
+
+    /// Set the current session and load its functions
+    func setSession(_ sessionId: UUID?) {
+        // Save current session's functions before switching
+        if let currentId = currentSessionId {
+            saveSessionFunctions(for: currentId)
+        }
+
+        // Switch to new session
+        currentSessionId = sessionId
+
+        // Load new session's functions
+        if let sessionId = sessionId {
+            loadSessionFunctions(for: sessionId)
+        } else {
+            functions = [:]
+        }
     }
 
     /// Define a new function
@@ -107,7 +128,11 @@ class FunctionRegistry {
 
     // MARK: - Persistence
 
-    private func saveFunctions() {
+    private func sessionPersistenceKey(for sessionId: UUID) -> String {
+        return "\(persistenceKey).\(sessionId.uuidString)"
+    }
+
+    private func saveSessionFunctions(for sessionId: UUID) {
         let defaults = UserDefaults.standard
 
         let encoded = functions.values.map { function -> [String: Any] in
@@ -122,13 +147,14 @@ class FunctionRegistry {
             return dict
         }
 
-        defaults.set(encoded, forKey: persistenceKey)
+        defaults.set(encoded, forKey: sessionPersistenceKey(for: sessionId))
     }
 
-    private func loadFunctions() {
+    private func loadSessionFunctions(for sessionId: UUID) {
         let defaults = UserDefaults.standard
+        functions = [:]
 
-        guard let functionsData = defaults.array(forKey: persistenceKey) as? [[String: Any]] else {
+        guard let functionsData = defaults.array(forKey: sessionPersistenceKey(for: sessionId)) as? [[String: Any]] else {
             return
         }
 
@@ -143,5 +169,15 @@ class FunctionRegistry {
             let function = UserFunction(name: name, parameters: parameters, body: body, help: help)
             functions[name] = function
         }
+    }
+
+    private func saveFunctions() {
+        guard let sessionId = currentSessionId else { return }
+        saveSessionFunctions(for: sessionId)
+    }
+
+    private func loadFunctions() {
+        guard let sessionId = currentSessionId else { return }
+        loadSessionFunctions(for: sessionId)
     }
 }

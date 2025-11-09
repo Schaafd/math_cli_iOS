@@ -175,6 +175,7 @@ struct CalculatorView: View {
             historyManager?.setCurrentSession(session)
             viewModel.historyManager = historyManager
             VariableStore.shared.setSession(session.id)
+            FunctionRegistry.shared.setSession(session.id)
 
             // Load session history to restore output lines
             viewModel.loadSessionHistory(session)
@@ -197,8 +198,9 @@ struct CalculatorView: View {
         historyManager?.setCurrentSession(session)
         viewModel.historyManager = historyManager
 
-        // Load new session's variables
+        // Load new session's variables and functions
         VariableStore.shared.setSession(session.id)
+        FunctionRegistry.shared.setSession(session.id)
 
         // Haptic feedback
         let generator = UIImpactFeedbackGenerator(style: .medium)

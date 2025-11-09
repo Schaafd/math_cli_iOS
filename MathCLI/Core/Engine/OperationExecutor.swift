@@ -114,7 +114,11 @@ class OperationExecutor {
             }
         }
 
+        // Store the final result in session-scoped VariableStore
         lastResult = result
+        variableStore.set(name: "ans", value: result)
+        variableStore.set(name: "$", value: result)
+
         return result
     }
 
@@ -151,14 +155,13 @@ class OperationExecutor {
             if arg.hasPrefix("$") {
                 let varName = String(arg.dropFirst())
 
-                // Special case for $ and ans
-                if varName.isEmpty || varName == "ans" {
-                    return resultToString(lastResult)
-                }
+                // Handle $ by treating it as the variable named "$"
+                // This ensures it's session-scoped through VariableStore
+                let lookupName = varName.isEmpty ? "$" : varName
 
-                // Get from variable store
-                guard let value = variableStore.get(name: varName) else {
-                    throw OperationError.variableNotFound(varName)
+                // Get from variable store (which is session-scoped)
+                guard let value = variableStore.get(name: lookupName) else {
+                    throw OperationError.variableNotFound(lookupName)
                 }
 
                 return resultToString(value)
