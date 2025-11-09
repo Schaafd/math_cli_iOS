@@ -100,7 +100,7 @@ struct HistoryView: View {
     }
 
     private func reopenSession(_ session: Session) {
-        sessionManager.switchToSession(session)
+        sessionManager.reopenSession(session)
         // Show a confirmation
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)

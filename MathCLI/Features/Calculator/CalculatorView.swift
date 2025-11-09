@@ -23,6 +23,11 @@ struct CalculatorView: View {
         _viewModel = StateObject(wrappedValue: CalculatorViewModel())
     }
 
+    // Only show sessions that are active (open in tabs)
+    private var activeSessions: [Session] {
+        sessionManager.sessions.filter { $0.isActive }
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -83,13 +88,13 @@ struct CalculatorView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 // Debug: Show session count
-                if sessionManager.sessions.isEmpty {
+                if activeSessions.isEmpty {
                     Text("No sessions - Debug")
                         .font(.caption)
                         .foregroundColor(.red)
                 }
 
-                ForEach(sessionManager.sessions) { session in
+                ForEach(activeSessions) { session in
                     SessionTab(
                         session: session,
                         isActive: session.id == sessionManager.activeSession?.id,
@@ -97,7 +102,7 @@ struct CalculatorView: View {
                             sessionManager.switchToSession(session)
                         },
                         onClose: {
-                            sessionManager.deleteSession(session)
+                            sessionManager.closeSession(session)
                         },
                         onRename: {
                             sessionToRename = session

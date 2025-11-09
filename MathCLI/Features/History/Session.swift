@@ -47,6 +47,12 @@ class SessionManager {
         self.modelContext = modelContext
         loadSessions()
         loadCurrentSession()
+
+        // Ensure there's always an initial active session
+        if currentSession == nil {
+            print("🔍 SessionManager init: No active session found, creating initial session")
+            let _ = createNewSession(name: "Session \(Date().formatted(date: .abbreviated, time: .shortened))")
+        }
     }
 
     func createSession(name: String? = nil) -> Session {
@@ -76,13 +82,8 @@ class SessionManager {
     }
 
     func switchToSession(_ session: Session) {
-        // Deactivate current session
-        if let current = currentSession {
-            current.isActive = false
-        }
-
-        // Activate selected session
-        session.isActive = true
+        // Just switch the current session without deactivating others
+        // This allows multiple sessions to remain active (open in tabs)
         currentSession = session
 
         do {
@@ -93,6 +94,49 @@ class SessionManager {
         }
     }
 
+    func reopenSession(_ session: Session) {
+        // Activate the session without deactivating others
+        session.isActive = true
+
+        // Switch to this session
+        currentSession = session
+
+        do {
+            try modelContext.save()
+            loadSessions() // Refresh the sessions array
+        } catch {
+            print("Failed to reopen session: \(error)")
+        }
+    }
+
+    func closeSession(_ session: Session) {
+        // Don't allow closing the last active session
+        let activeSessions = sessions.filter { $0.isActive }
+        guard activeSessions.count > 1 || !session.isActive else {
+            print("Cannot close the last active session")
+            return
+        }
+
+        // Mark session as inactive (close the tab)
+        session.isActive = false
+
+        // If closing the current session, switch to another active one
+        if currentSession?.id == session.id {
+            if let nextSession = sessions.first(where: { $0.isActive && $0.id != session.id }) {
+                currentSession = nextSession
+            } else {
+                currentSession = nil
+            }
+        }
+
+        do {
+            try modelContext.save()
+            loadSessions() // Refresh the sessions array
+        } catch {
+            print("Failed to close session: \(error)")
+        }
+    }
+
     func deleteSession(_ session: Session) {
         // If deleting the current session, set current to nil
         if currentSession?.id == session.id {
@@ -100,7 +144,7 @@ class SessionManager {
         }
 
         modelContext.delete(session)
-        
+
         do {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
