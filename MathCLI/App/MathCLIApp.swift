@@ -23,7 +23,14 @@ struct MathCLIApp: App {
             let manager = SessionManager(modelContext: container.mainContext)
             _sessionManager = State(wrappedValue: manager)
         } catch {
-            fatalError("Failed to initialize ModelContainer: \(error)")
+            let config = ModelConfiguration(isStoredInMemoryOnly: true)
+            let container = try! ModelContainer(for: Session.self, HistoryEntry.self,
+                                                configurations: config)
+            modelContainer = container
+
+            let manager = SessionManager(modelContext: container.mainContext)
+            _sessionManager = State(wrappedValue: manager)
+            print("Warning: falling back to in-memory storage due to ModelContainer error: \(error)")
         }
     }
 

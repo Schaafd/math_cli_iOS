@@ -674,7 +674,6 @@
 				EBB62D822EB7C95500DCAECA /* OperationExecutor.swift in Sources */,
 				EBB62D962EB7CA0400DCAECA /* ConversionOperations.swift in Sources */,
 				EBB62DB82EB7CAD200DCAECA /* CalculatorView.swift in Sources */,
-				EBB62DC62EB7D37500DCAECA /* MatrixOperationsTest.swift in Sources */,
 				EBB62DB92EB7CAD200DCAECA /* OperationBrowserView.swift in Sources */,
 				EBB62DBA2EB7CAD200DCAECA /* CalculatorViewModel.swift in Sources */,
 				EBB62D942EB7C9F800DCAECA /* ControlFlowOperations.swift in Sources */,
@@ -685,7 +684,6 @@
 				EBB62D862EB7C9A300DCAECA /* MathCLIApp.swift in Sources */,
 				EBB62D842EB7C97900DCAECA /* BasicArithmeticOperations.swift in Sources */,
 				EBB62DBE2EB7CADF00DCAECA /* SettingsView.swift in Sources */,
-				EBB166DE2EC03B30004459D0 /* MatrixOperationsTest.swift in Sources */,
 				EBB62DA22EB7CA5800DCAECA /* NumberTheoryOperations.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -694,6 +692,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EBB62DC62EB7D37500DCAECA /* MatrixOperationsTest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -726,9 +725,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = GBJSTNV436;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -776,9 +777,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = GBJSTNV436;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
