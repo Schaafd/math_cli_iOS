@@ -573,7 +573,7 @@ struct CalculatorView: View {
 
     private func commandInsertionText(for commandName: String) -> String {
         switch commandName {
-        case "pi", "e", "golden":
+        case "pi", "e", "golden_ratio":
             return commandName
         default:
             return commandName + " "
