@@ -1202,6 +1202,19 @@ enum CalculatorKey: Identifiable, Hashable {
         default: return false
         }
     }
+
+    private func outputColor(for type: CalculatorViewModel.OutputLine.LineType) -> Color {
+        if let override = textColor.color {
+            return type == .error ? appTheme.errorText : override
+        }
+
+        switch type {
+        case .command: return appTheme.commandText
+        case .result: return appTheme.resultText
+        case .error: return appTheme.errorText
+        case .info: return appTheme.infoText
+        }
+    }
 }
 
 // MARK: - Session Tab
