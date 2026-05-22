@@ -4,7 +4,7 @@ MathCLI is an iOS/iPadOS SwiftUI calculator app built around typed command execu
 
 ## Current Supported Surfaces
 
-- Calculator: command input, scientific expressions, autocomplete suggestions, chained commands, quick operation buttons, session tabs, rename/switch/close behavior.
+- Calculator: command input, scientific expressions, autocomplete suggestions, customizable pinned command bar, Command Drawer, calculator/scientific input layouts, chained commands, quick operation buttons, session tabs, rename/switch/close behavior.
 - History: active/past sessions, calculation details, bookmarks, search, delete, JSON export, Markdown export, destructive confirmations.
 - Operations: categorized operation list and operation help.
 - Settings: display/calculator preferences, app-data JSON export/import, destructive confirmations for clearing variables/functions.
