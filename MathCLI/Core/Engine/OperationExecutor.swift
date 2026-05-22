@@ -193,14 +193,11 @@ class OperationExecutor {
     private func evaluateExpression(_ expression: String) throws -> OperationResult {
         let parser = ExpressionParser(
             expression: expression,
-            variableResolver: { [weak self] name in
-                try self?.resolveExpressionVariable(name) ?? 0
+            variableResolver: { name in
+                try self.resolveExpressionVariable(name)
             },
-            functionResolver: { [weak self] name, args in
-                guard let self else {
-                    throw OperationError.executionError("Expression evaluator is unavailable")
-                }
-                return try self.resolveExpressionFunction(name: name, args: args)
+            functionResolver: { name, args in
+                try self.resolveExpressionFunction(name: name, args: args)
             }
         )
         return .number(try parser.parse())
