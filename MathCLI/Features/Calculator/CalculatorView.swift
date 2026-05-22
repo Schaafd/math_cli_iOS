@@ -1225,7 +1225,9 @@ struct CalculatorKeypadView: View {
     }
 
     var body: some View {
-        let rowCount = max(1, Int(ceil(Double(keys.count) / 4.0)))
+        let columnCount = max(1, columns.count)
+        let compactFontThreshold: CGFloat = 34
+        let rowCount = max(1, Int(ceil(Double(keys.count) / Double(columnCount))))
         let rowSpacing: CGFloat = 8
         let verticalPadding: CGFloat = 18
         let minimumKeyHeight: CGFloat = 32
@@ -1242,7 +1244,7 @@ struct CalculatorKeypadView: View {
                         handle(key)
                     } label: {
                         Text(key.title)
-                            .font(.system(keyHeight <= 34 ? .footnote : .body, design: textFont.design))
+                            .font(.system(keyHeight <= compactFontThreshold ? .footnote : .body, design: textFont.design))
                             .fontWeight(key.isPrimary ? .bold : .semibold)
                             .foregroundColor(key.isPrimary ? appTheme.onAccent : textColor.color ?? appTheme.primaryText)
                             .lineLimit(1)
