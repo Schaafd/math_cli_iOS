@@ -333,6 +333,7 @@ struct MathCLIApp: App {
             "calculatorTextFont",
             "calculatorTextColor",
             "calculatorInputPanel",
+            "calculatorPanelHeight",
             "pinnedCommands"
         ].forEach { key in
             defaults.removeObject(forKey: key)

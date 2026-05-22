@@ -24,6 +24,8 @@ struct CalculatorView: View {
     @State private var showingRenameSheet = false
     @State private var showingCommandDrawer = false
     @State private var selectedCommandDetail: CommandShortcut?
+    @State private var commandDrawerDetent = PresentationDetent.large
+    @AppStorage("calculatorPanelHeight") private var calculatorPanelHeight = 292.0
     @State private var sessionToRename: Session?
     @State private var newSessionName = ""
     @State private var cachedPinnedCommandNames: [String] = []
@@ -122,9 +124,12 @@ struct CalculatorView: View {
                     }
                 )
                 .environment(\.mathCLITheme, appTheme)
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.fraction(0.72), .large], selection: $commandDrawerDetent)
                 .presentationContentInteraction(.scrolls)
                 .presentationDragIndicator(.visible)
+                .onAppear {
+                    commandDrawerDetent = .large
+                }
             }
             .sheet(item: $selectedCommandDetail) { command in
                 CommandDetailSheet(command: command)
@@ -390,6 +395,7 @@ struct CalculatorView: View {
                         } label: {
                             Label(panel.displayName, systemImage: panel.iconName)
                         }
+                        .accessibilityIdentifier("InputPanelOption_\(panel.rawValue)")
                     }
 
                     Divider()
@@ -469,8 +475,9 @@ struct CalculatorView: View {
             case .commandBar:
                 EmptyView()
             case .calculator:
-                CalculatorKeypadView(
+                CalculatorKeypadDrawerView(
                     mode: .standard,
+                    height: $calculatorPanelHeight,
                     onInsert: insertCalculatorToken,
                     onBackspace: deleteLastInputCharacter,
                     onClear: clearInput,
@@ -478,8 +485,9 @@ struct CalculatorView: View {
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             case .scientific:
-                CalculatorKeypadView(
+                CalculatorKeypadDrawerView(
                     mode: .scientific,
+                    height: $calculatorPanelHeight,
                     onInsert: insertCalculatorToken,
                     onBackspace: deleteLastInputCharacter,
                     onClear: clearInput,
@@ -783,34 +791,41 @@ struct CommandDrawerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                drawerHeader
-                categoryStrip
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    drawerHeader
+                    categoryStrip
 
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 10) {
-                        ForEach(filteredCommands) { command in
-                            CommandDrawerCard(
-                                command: command,
-                                isPinned: pinnedCommandNames.contains(command.name),
-                                onUse: {
-                                    onUse(command)
-                                },
-                                onTogglePin: {
-                                    withAnimation(.snappy(duration: 0.24)) {
-                                        onTogglePin(command)
+                    ScrollView(.vertical, showsIndicators: true) {
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(filteredCommands) { command in
+                                CommandDrawerCard(
+                                    command: command,
+                                    isPinned: pinnedCommandNames.contains(command.name),
+                                    onUse: {
+                                        onUse(command)
+                                    },
+                                    onTogglePin: {
+                                        withAnimation(.snappy(duration: 0.24)) {
+                                            onTogglePin(command)
+                                        }
+                                    },
+                                    onShowDetails: {
+                                        selectedCommandDetail = command
                                     }
-                                },
-                                onShowDetails: {
-                                    selectedCommandDetail = command
-                                }
-                            )
+                                )
+                            }
                         }
+                        .padding(16)
+                        .padding(.bottom, 24)
                     }
-                    .padding(16)
+                    .frame(height: max(180, proxy.size.height - 138))
+                    .scrollDismissesKeyboard(.interactively)
+                    .accessibilityIdentifier("CommandDrawerScrollView")
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(appTheme.background)
             .navigationTitle("Command Drawer")
             .navigationBarTitleDisplayMode(.inline)
@@ -819,6 +834,7 @@ struct CommandDrawerView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .accessibilityIdentifier("CommandDrawerDoneButton")
                 }
 
                 ToolbarItem(placement: .primaryAction) {
@@ -1066,6 +1082,7 @@ struct CommandDetailSheet: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .accessibilityIdentifier("CommandDetailDoneButton")
                 }
             }
         }
@@ -1075,9 +1092,89 @@ struct CommandDetailSheet: View {
 
 // MARK: - Calculator Keypad
 
-enum CalculatorKeypadMode {
+enum CalculatorKeypadMode: Equatable {
     case standard
     case scientific
+}
+
+struct CalculatorKeypadDrawerView: View {
+    @Environment(\.mathCLITheme) private var appTheme
+
+    let mode: CalculatorKeypadMode
+    @Binding var height: Double
+    let onInsert: (String) -> Void
+    let onBackspace: () -> Void
+    let onClear: () -> Void
+    let onExecute: () -> Void
+
+    @State private var dragStartHeight: Double?
+
+    private var minHeight: Double { 166 }
+
+    private var maxHeight: Double {
+        let preferred = mode == .scientific ? 384.0 : 322.0
+        return min(preferred, UIScreen.main.bounds.height * 0.48)
+    }
+
+    private var clampedHeight: Double {
+        min(max(height, minHeight), maxHeight)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            resizeHandle
+
+            CalculatorKeypadView(
+                mode: mode,
+                availableHeight: max(88, CGFloat(clampedHeight) - 30),
+                onInsert: onInsert,
+                onBackspace: onBackspace,
+                onClear: onClear,
+                onExecute: onExecute
+            )
+            .frame(height: max(88, CGFloat(clampedHeight) - 30))
+        }
+        .frame(height: CGFloat(clampedHeight))
+        .background(appTheme.surface)
+        .overlay(Divider(), alignment: .top)
+        .onAppear {
+            height = clampedHeight
+        }
+        .onChange(of: mode) { _, _ in
+            height = clampedHeight
+        }
+        .accessibilityIdentifier("CalculatorKeypadDrawer")
+    }
+
+    private var resizeHandle: some View {
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(appTheme.secondaryText.opacity(0.55))
+                .frame(width: 42, height: 5)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 30)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 3)
+                .onChanged { value in
+                    if dragStartHeight == nil {
+                        dragStartHeight = clampedHeight
+                    }
+
+                    let startHeight = dragStartHeight ?? clampedHeight
+                    let proposedHeight = startHeight - value.translation.height
+                    height = min(max(proposedHeight, minHeight), maxHeight)
+                }
+                .onEnded { _ in
+                    height = clampedHeight
+                    dragStartHeight = nil
+                }
+        )
+        .accessibilityElement()
+        .accessibilityLabel("Resize calculator panel")
+        .accessibilityIdentifier("CalculatorPanelResizeHandle")
+    }
 }
 
 struct CalculatorKeypadView: View {
@@ -1086,6 +1183,7 @@ struct CalculatorKeypadView: View {
     @AppStorage("calculatorTextColor") private var calculatorTextColor = MathCLITextColor.theme.rawValue
 
     let mode: CalculatorKeypadMode
+    let availableHeight: CGFloat
     let onInsert: (String) -> Void
     let onBackspace: () -> Void
     let onClear: () -> Void
@@ -1126,27 +1224,44 @@ struct CalculatorKeypadView: View {
     }
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(keys) { key in
-                Button {
-                    handle(key)
-                } label: {
-                    Text(key.title)
-                        .font(.system(.body, design: textFont.design))
-                        .fontWeight(key.isPrimary ? .bold : .semibold)
-                        .foregroundColor(key.isPrimary ? appTheme.onAccent : textColor.color ?? appTheme.primaryText)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(key.isPrimary ? appTheme.accent : appTheme.secondarySurface)
-                        .cornerRadius(8)
+        let rowCount = max(1, Int(ceil(Double(keys.count) / 4.0)))
+        let rowSpacing: CGFloat = 8
+        let verticalPadding: CGFloat = 18
+        let minimumKeyHeight: CGFloat = 32
+        let maximumKeyHeight: CGFloat = 42
+        let computedKeyHeight = (availableHeight - verticalPadding - CGFloat(rowCount - 1) * rowSpacing) / CGFloat(rowCount)
+        let keyHeight = min(maximumKeyHeight, max(minimumKeyHeight, computedKeyHeight))
+        let contentHeight = verticalPadding + CGFloat(rowCount) * keyHeight + CGFloat(rowCount - 1) * rowSpacing
+        let needsScroll = contentHeight > availableHeight + 1
+
+        ScrollView(.vertical, showsIndicators: needsScroll) {
+            LazyVGrid(columns: columns, spacing: rowSpacing) {
+                ForEach(keys) { key in
+                    Button {
+                        handle(key)
+                    } label: {
+                        Text(key.title)
+                            .font(.system(size: keyHeight <= 34 ? 14 : 16, design: textFont.design))
+                            .fontWeight(key.isPrimary ? .bold : .semibold)
+                            .foregroundColor(key.isPrimary ? appTheme.onAccent : textColor.color ?? appTheme.primaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: keyHeight)
+                            .background(key.isPrimary ? appTheme.accent : appTheme.secondarySurface)
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("CalculatorKey_\(key.accessibilityName)")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("CalculatorKey_\(key.accessibilityName)")
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
+            .frame(minHeight: availableHeight, alignment: .top)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
+        .scrollDisabled(!needsScroll)
+        .accessibilityIdentifier("CalculatorKeypadScrollView")
         .background(appTheme.surface)
     }
 
@@ -1203,19 +1318,6 @@ enum CalculatorKey: Identifiable, Hashable {
         switch self {
         case .execute: return true
         default: return false
-        }
-    }
-
-    private func outputColor(for type: CalculatorViewModel.OutputLine.LineType) -> Color {
-        if let override = textColor.color {
-            return type == .error ? appTheme.errorText : override
-        }
-
-        switch type {
-        case .command: return appTheme.commandText
-        case .result: return appTheme.resultText
-        case .error: return appTheme.errorText
-        case .info: return appTheme.infoText
         }
     }
 }

@@ -66,6 +66,14 @@ final class MathCLIUITests: XCTestCase {
         XCTAssertTrue(app.buttons["CommandDrawerButton"].waitForExistence(timeout: 5))
         app.buttons["CommandDrawerButton"].tap()
 
+        let drawerScroll = app.scrollViews["CommandDrawerScrollView"]
+        XCTAssertTrue(drawerScroll.waitForExistence(timeout: 5))
+        let firstCommand = app.buttons["CommandCard_abs"]
+        XCTAssertTrue(firstCommand.waitForExistence(timeout: 5))
+        drawerScroll.swipeUp()
+        drawerScroll.swipeUp()
+        XCTAssertFalse(firstCommand.isHittable)
+
         let search = app.textFields["CommandDrawerSearch"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
@@ -74,10 +82,10 @@ final class MathCLIUITests: XCTestCase {
         app.buttons["CommandCard_sqrt"].tap()
         XCTAssertTrue(app.staticTexts["Parameters"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["x"].exists)
-        app.buttons["Done"].tap()
+        app.buttons["CommandDetailDoneButton"].tap()
 
         app.buttons["PinCommand_sqrt"].tap()
-        app.buttons["Done"].tap()
+        app.buttons["CommandDrawerDoneButton"].tap()
 
         XCTAssertTrue(app.buttons["QuickCommand_sqrt"].waitForExistence(timeout: 5))
         app.buttons["QuickCommand_sqrt"].tap()
@@ -85,14 +93,23 @@ final class MathCLIUITests: XCTestCase {
         app.textFields["CalculatorInput"].press(forDuration: 0.8)
         XCTAssertTrue(app.staticTexts["Command Help"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["sqrt"].exists)
-        app.buttons["Done"].tap()
+        app.buttons["CommandDetailDoneButton"].tap()
 
         app.buttons["DismissKeyboardButton"].tap()
-        app.buttons["Scientific"].tap()
+        app.buttons["InputPanelOption_scientific"].tap()
         XCTAssertTrue(app.buttons["CalculatorKey_sin"].waitForExistence(timeout: 5))
+        let keypadDrawer = app.otherElements["CalculatorKeypadDrawer"]
+        XCTAssertTrue(keypadDrawer.waitForExistence(timeout: 5))
+        let executeKey = app.buttons["CalculatorKey_execute"]
+        for _ in 0..<4 where !executeKey.isHittable {
+            let start = keypadDrawer.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
+            let end = keypadDrawer.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.24))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+        XCTAssertTrue(executeKey.isHittable)
 
         app.buttons["DismissKeyboardButton"].tap()
-        app.buttons["Calculator"].tap()
+        app.buttons["InputPanelOption_calculator"].tap()
         XCTAssertTrue(app.buttons["CalculatorKey_7"].waitForExistence(timeout: 5))
     }
 
