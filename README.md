@@ -98,7 +98,7 @@ xcodebuild -project MathCLI.xcodeproj -scheme MathCLI -destination 'generic/plat
 xcodebuild -project MathCLI.xcodeproj -scheme MathCLI -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' -quiet test
 ```
 
-To launch the app manually, open the project in Xcode and run the `MathCLI` scheme on an iOS simulator, or use the simulator workflow in Codex/XcodeBuildMCP if configured.
+To launch the app manually, open the project in Xcode and run the `MathCLI` scheme on an iOS simulator.
 
 ## Export Schema
 

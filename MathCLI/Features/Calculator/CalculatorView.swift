@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import UIKit
 
 struct CalculatorView: View {
     @Environment(\.modelContext) private var modelContext
@@ -64,21 +63,23 @@ struct CalculatorView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Session tabs at the top
-                sessionTabBar
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    // Session tabs at the top
+                    sessionTabBar
 
-                Divider()
+                    Divider()
 
-                // Terminal-style output area
-                terminalOutput
+                    // Terminal-style output area
+                    terminalOutput
 
-                Divider()
+                    Divider()
 
-                // Modern input controls
-                inputArea
+                    // Modern input controls
+                    inputArea(availableHeight: proxy.size.height)
+                }
+                .background(appTheme.background)
             }
-            .background(appTheme.background)
             .navigationTitle("Math CLI")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -336,7 +337,7 @@ struct CalculatorView: View {
 
     // MARK: - Input Area
 
-    private var inputArea: some View {
+    private func inputArea(availableHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             // Suggestions
             if viewModel.showSuggestions {
@@ -432,7 +433,7 @@ struct CalculatorView: View {
                 showInputCommandHelp()
             }
 
-            inputPanelView
+            inputPanelView(availableHeight: availableHeight)
         }
         .background(appTheme.surface)
         .animation(.snappy(duration: 0.28), value: inputPanel)
@@ -469,7 +470,7 @@ struct CalculatorView: View {
 
     // MARK: - Quick Action Toolbar
 
-    private var inputPanelView: some View {
+    private func inputPanelView(availableHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             switch inputPanel {
             case .commandBar:
@@ -477,6 +478,7 @@ struct CalculatorView: View {
             case .calculator:
                 CalculatorKeypadDrawerView(
                     mode: .standard,
+                    availableHeight: availableHeight,
                     height: $calculatorPanelHeight,
                     onInsert: insertCalculatorToken,
                     onBackspace: deleteLastInputCharacter,
@@ -487,6 +489,7 @@ struct CalculatorView: View {
             case .scientific:
                 CalculatorKeypadDrawerView(
                     mode: .scientific,
+                    availableHeight: availableHeight,
                     height: $calculatorPanelHeight,
                     onInsert: insertCalculatorToken,
                     onBackspace: deleteLastInputCharacter,
@@ -791,41 +794,37 @@ struct CommandDrawerView: View {
 
     var body: some View {
         NavigationStack {
-            GeometryReader { proxy in
-                VStack(spacing: 0) {
-                    drawerHeader
-                    categoryStrip
+            VStack(spacing: 0) {
+                drawerHeader
+                categoryStrip
 
-                    ScrollView(.vertical, showsIndicators: true) {
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(filteredCommands) { command in
-                                CommandDrawerCard(
-                                    command: command,
-                                    isPinned: pinnedCommandNames.contains(command.name),
-                                    onUse: {
-                                        onUse(command)
-                                    },
-                                    onTogglePin: {
-                                        withAnimation(.snappy(duration: 0.24)) {
-                                            onTogglePin(command)
-                                        }
-                                    },
-                                    onShowDetails: {
-                                        selectedCommandDetail = command
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        ForEach(filteredCommands) { command in
+                            CommandDrawerCard(
+                                command: command,
+                                isPinned: pinnedCommandNames.contains(command.name),
+                                onUse: {
+                                    onUse(command)
+                                },
+                                onTogglePin: {
+                                    withAnimation(.snappy(duration: 0.24)) {
+                                        onTogglePin(command)
                                     }
-                                )
-                            }
+                                },
+                                onShowDetails: {
+                                    selectedCommandDetail = command
+                                }
+                            )
                         }
-                        .padding(16)
-                        .padding(.bottom, 24)
                     }
-                    .frame(height: max(180, proxy.size.height - 138))
-                    .scrollDismissesKeyboard(.interactively)
-                    .accessibilityIdentifier("CommandDrawerScrollView")
+                    .padding(16)
+                    .padding(.bottom, 24)
                 }
-                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .scrollDismissesKeyboard(.interactively)
+                .accessibilityIdentifier("CommandDrawerScrollView")
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(appTheme.background)
             .navigationTitle("Command Drawer")
             .navigationBarTitleDisplayMode(.inline)
@@ -1101,6 +1100,7 @@ struct CalculatorKeypadDrawerView: View {
     @Environment(\.mathCLITheme) private var appTheme
 
     let mode: CalculatorKeypadMode
+    let availableHeight: CGFloat
     @Binding var height: Double
     let onInsert: (String) -> Void
     let onBackspace: () -> Void
@@ -1113,7 +1113,8 @@ struct CalculatorKeypadDrawerView: View {
 
     private var maxHeight: Double {
         let preferred = mode == .scientific ? 384.0 : 322.0
-        return min(preferred, UIScreen.main.bounds.height * 0.48)
+        let containerLimitedHeight = Double(availableHeight) * 0.48
+        return max(minHeight, min(preferred, containerLimitedHeight))
     }
 
     private var clampedHeight: Double {
@@ -1241,7 +1242,7 @@ struct CalculatorKeypadView: View {
                         handle(key)
                     } label: {
                         Text(key.title)
-                            .font(.system(size: keyHeight <= 34 ? 14 : 16, design: textFont.design))
+                            .font(.system(keyHeight <= 34 ? .footnote : .body, design: textFont.design))
                             .fontWeight(key.isPrimary ? .bold : .semibold)
                             .foregroundColor(key.isPrimary ? appTheme.onAccent : textColor.color ?? appTheme.primaryText)
                             .lineLimit(1)
