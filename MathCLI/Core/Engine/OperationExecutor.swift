@@ -324,7 +324,7 @@ class OperationExecutor {
             throw OperationError.invalidArgumentCount(expected: operation.arguments.count, got: args.count)
         }
 
-        let result = try operation.execute(args: args.map { $0 as Any })
+        let result = try operation.execute(args: stringArgs)
         return try numericResult(result, functionName: name)
     }
 
