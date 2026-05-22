@@ -26,12 +26,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Run Kilo
-        uses: Kilo-Org/kilo/github@latest
+        uses: Kilo-Org/kilo/github@v1.0.25
         with:
           model: kilo/claude-sonnet-4-20250514
           kilo_api_key: ${{ secrets.KILO_API_KEY }}

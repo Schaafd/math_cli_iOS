@@ -175,6 +175,14 @@ enum MathCLITheme: String, CaseIterable, Identifiable {
         case .highContrast: return .white
         }
     }
+
+    /// Foreground color to use on top of `accent` backgrounds for legible contrast.
+    var onAccent: Color {
+        switch self {
+        case .highContrast: return .black
+        default: return .white
+        }
+    }
 }
 
 enum MathCLITextFont: String, CaseIterable, Identifiable {

@@ -26,6 +26,7 @@ struct CalculatorView: View {
     @State private var selectedCommandDetail: CommandShortcut?
     @State private var sessionToRename: Session?
     @State private var newSessionName = ""
+    @State private var cachedPinnedCommandNames: [String] = []
 
     private let defaultCommandNames = ["add", "subtract", "multiply", "divide", "power"]
     private let registry = OperationRegistry.shared
@@ -52,8 +53,7 @@ struct CalculatorView: View {
     }
 
     private var pinnedCommandNames: [String] {
-        let decoded = decodePinnedCommands()
-        return decoded.isEmpty ? defaultCommandNames : decoded
+        cachedPinnedCommandNames.isEmpty ? defaultCommandNames : cachedPinnedCommandNames
     }
 
     private var pinnedCommands: [CommandShortcut] {
@@ -135,9 +135,13 @@ struct CalculatorView: View {
             }
             .onAppear {
                 setupCurrentSession()
+                cachedPinnedCommandNames = decodePinnedCommands()
             }
             .onChange(of: sessionManager.activeSession) { _, newSession in
                 switchToSession(newSession)
+            }
+            .onChange(of: pinnedCommandsData) { _, _ in
+                cachedPinnedCommandNames = decodePinnedCommands()
             }
         }
     }
@@ -402,7 +406,6 @@ struct CalculatorView: View {
                 }
                 .menuOrder(.fixed)
                 .accessibilityIdentifier("KeyboardMenuButton")
-                .accessibilityIdentifier("DismissKeyboardButton")
 
                 // Execute button
                 Button {
@@ -890,7 +893,7 @@ struct CommandDrawerView: View {
             Text(title)
                 .font(.caption)
                 .fontWeight(selectedCategory == category ? .semibold : .regular)
-                .foregroundColor(selectedCategory == category ? appTheme.background : appTheme.primaryText)
+                .foregroundColor(selectedCategory == category ? appTheme.onAccent : appTheme.primaryText)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
                 .background(selectedCategory == category ? appTheme.accent : appTheme.surface)
@@ -963,7 +966,7 @@ struct CommandDrawerCard: View {
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 7)
-                    .foregroundColor(appTheme.background)
+                    .foregroundColor(appTheme.onAccent)
                     .background(appTheme.accent)
                     .cornerRadius(7)
             }
@@ -1131,7 +1134,7 @@ struct CalculatorKeypadView: View {
                     Text(key.title)
                         .font(.system(.body, design: textFont.design))
                         .fontWeight(key.isPrimary ? .bold : .semibold)
-                        .foregroundColor(key.isPrimary ? appTheme.background : textColor.color ?? appTheme.primaryText)
+                        .foregroundColor(key.isPrimary ? appTheme.onAccent : textColor.color ?? appTheme.primaryText)
                         .frame(maxWidth: .infinity)
                         .frame(height: 42)
                         .background(key.isPrimary ? appTheme.accent : appTheme.secondarySurface)
