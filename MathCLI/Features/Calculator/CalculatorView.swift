@@ -12,6 +12,9 @@ import UIKit
 struct CalculatorView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(SessionManager.self) private var sessionManager
+    @Environment(\.mathCLITheme) private var appTheme
+    @AppStorage("calculatorTextFont") private var calculatorTextFont = MathCLITextFont.monospaced.rawValue
+    @AppStorage("calculatorTextColor") private var calculatorTextColor = MathCLITextColor.theme.rawValue
     @StateObject private var viewModel: CalculatorViewModel
     @State private var historyManager: HistoryManager?
     @FocusState private var isInputFocused: Bool
@@ -27,6 +30,14 @@ struct CalculatorView: View {
     // Only show sessions that are active (open in tabs)
     private var activeSessions: [Session] {
         sessionManager.sessions.filter { $0.isActive }
+    }
+
+    private var textFont: MathCLITextFont {
+        MathCLITextFont(rawValue: calculatorTextFont) ?? .monospaced
+    }
+
+    private var textColor: MathCLITextColor {
+        MathCLITextColor(rawValue: calculatorTextColor) ?? .theme
     }
 
     var body: some View {
@@ -45,7 +56,7 @@ struct CalculatorView: View {
                 // Modern input controls
                 inputArea
             }
-            .background(Color(uiColor: .systemBackground))
+            .background(appTheme.background)
             .navigationTitle("Math CLI")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -124,7 +135,7 @@ struct CalculatorView: View {
             .padding(.vertical, 8)
         }
         .frame(minHeight: 50)
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(appTheme.secondarySurface)
     }
 
     private var renameSessionSheet: some View {
@@ -235,14 +246,14 @@ struct CalculatorView: View {
                         HStack(alignment: .top, spacing: 8) {
                             // Timestamp
                             Text(line.timestamp, style: .time)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.secondary)
+                                .font(.system(.caption, design: textFont.design))
+                                .foregroundColor(textColor.color ?? appTheme.secondaryText)
                                 .frame(width: 60, alignment: .leading)
 
                             // Output text
                             Text(line.text)
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundColor(line.color)
+                                .font(.system(.body, design: textFont.design))
+                                .foregroundColor(outputColor(for: line.type))
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -253,7 +264,7 @@ struct CalculatorView: View {
                 }
                 .padding(.vertical, 12)
             }
-            .background(Color(uiColor: .secondarySystemBackground))
+            .background(appTheme.terminalBackground)
             .onAppear {
                 scrollProxy = proxy
             }
@@ -280,12 +291,13 @@ struct CalculatorView: View {
             HStack(spacing: 12) {
                 // Prompt indicator
                 Text(">")
-                    .font(.system(.title2, design: .monospaced))
-                    .foregroundColor(.green)
+                    .font(.system(.title2, design: textFont.design))
+                    .foregroundColor(textColor.color ?? appTheme.commandText)
 
                 // Text field
                 TextField("Enter operation...", text: $viewModel.inputText)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(.body, design: textFont.design))
+                    .foregroundColor(textColor.color ?? appTheme.primaryText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("CalculatorInput")
@@ -333,7 +345,7 @@ struct CalculatorView: View {
             // Quick action toolbar
             quickActionToolbar
         }
-        .background(Color(uiColor: .systemBackground))
+        .background(appTheme.surface)
         .onAppear {
             isInputFocused = true
         }
@@ -349,10 +361,11 @@ struct CalculatorView: View {
                         viewModel.selectSuggestion(suggestion)
                     } label: {
                         Text(suggestion)
-                            .font(.system(.footnote, design: .monospaced))
+                            .font(.system(.footnote, design: textFont.design))
+                            .foregroundColor(textColor.color ?? appTheme.commandText)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.2))
+                            .background(appTheme.accent.opacity(0.16))
                             .cornerRadius(8)
                     }
                 }
@@ -360,7 +373,7 @@ struct CalculatorView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .background(Color(uiColor: .tertiarySystemBackground))
+        .background(appTheme.secondarySurface)
     }
 
     // MARK: - Quick Action Toolbar
@@ -416,12 +429,25 @@ struct CalculatorView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(appTheme.secondarySurface)
     }
 
     private func insertOperation(_ text: String) {
         viewModel.inputText += text
         isInputFocused = true
+    }
+
+    private func outputColor(for type: CalculatorViewModel.OutputLine.LineType) -> Color {
+        if let override = textColor.color {
+            return type == .error ? appTheme.errorText : override
+        }
+
+        switch type {
+        case .command: return appTheme.commandText
+        case .result: return appTheme.resultText
+        case .error: return appTheme.errorText
+        case .info: return appTheme.infoText
+        }
     }
 }
 
@@ -475,11 +501,11 @@ struct SessionTab: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isActive ? Color.blue.opacity(0.15) : Color(uiColor: .tertiarySystemBackground))
+                .fill(isActive ? Color.accentColor.opacity(0.18) : Color(uiColor: .tertiarySystemBackground))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(isActive ? Color.blue.opacity(0.5) : Color.clear, lineWidth: 1)
+                .stroke(isActive ? Color.accentColor.opacity(0.5) : Color.clear, lineWidth: 1)
         )
     }
 }
@@ -487,25 +513,38 @@ struct SessionTab: View {
 // MARK: - Quick Action Button
 
 struct QuickActionButton: View {
+    @Environment(\.mathCLITheme) private var appTheme
+    @AppStorage("calculatorTextFont") private var calculatorTextFont = MathCLITextFont.monospaced.rawValue
+    @AppStorage("calculatorTextColor") private var calculatorTextColor = MathCLITextColor.theme.rawValue
+
     let title: String
     let operation: String
     let action: () -> Void
+
+    private var textFont: MathCLITextFont {
+        MathCLITextFont(rawValue: calculatorTextFont) ?? .monospaced
+    }
+
+    private var textColor: MathCLITextColor {
+        MathCLITextColor(rawValue: calculatorTextColor) ?? .theme
+    }
 
     var body: some View {
         Button(action: action) {
             VStack(spacing: 2) {
                 Text(title)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(.body, design: textFont.design))
                     .fontWeight(.semibold)
+                    .foregroundColor(textColor.color ?? appTheme.commandText)
 
                 Text(operation)
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .font(.system(.caption2, design: textFont.design))
+                    .foregroundColor(textColor.color ?? appTheme.secondaryText)
             }
             .frame(minWidth: 44)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .background(Color(uiColor: .tertiarySystemBackground))
+            .background(appTheme.surface)
             .cornerRadius(8)
         }
         .buttonStyle(.plain)

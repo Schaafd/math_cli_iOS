@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.mathCLITheme) private var appTheme
     @Query(sort: \Session.createdAt, order: .reverse) private var allSessions: [Session]
 
     @AppStorage("decimalPlaces") private var decimalPlaces = 6
@@ -18,6 +19,8 @@ struct SettingsView: View {
     @AppStorage("enableHaptics") private var enableHaptics = true
     @AppStorage("enableSuggestions") private var enableSuggestions = true
     @AppStorage("theme") private var selectedTheme = "default"
+    @AppStorage("calculatorTextFont") private var calculatorTextFont = MathCLITextFont.monospaced.rawValue
+    @AppStorage("calculatorTextColor") private var calculatorTextColor = MathCLITextColor.theme.rawValue
     @State private var exportDocument: MathCLITextDocument?
     @State private var showImporter = false
     @State private var showClearVariablesConfirmation = false
@@ -33,16 +36,36 @@ struct SettingsView: View {
                     Stepper("Decimal Places: \(decimalPlaces)", value: $decimalPlaces, in: 0...15)
 
                     Picker("Theme", selection: $selectedTheme) {
-                        Text("Default").tag("default")
-                        Text("Dark").tag("dark")
-                        Text("Light").tag("light")
-                        Text("Ocean").tag("ocean")
-                        Text("Forest").tag("forest")
-                        Text("Sunset").tag("sunset")
-                        Text("Synthwave").tag("synthwave")
-                        Text("High Contrast").tag("high-contrast")
+                        ForEach(MathCLITheme.allCases) { theme in
+                            Text(theme.displayName).tag(theme.rawValue)
+                        }
+                    }
+
+                    Picker("Calculator Font", selection: $calculatorTextFont) {
+                        ForEach(MathCLITextFont.allCases) { font in
+                            Text(font.displayName).tag(font.rawValue)
+                        }
+                    }
+
+                    Picker("Calculator Text Color", selection: $calculatorTextColor) {
+                        ForEach(MathCLITextColor.allCases) { textColor in
+                            HStack {
+                                if let color = textColor.color {
+                                    Circle()
+                                        .fill(color)
+                                        .frame(width: 14, height: 14)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(.secondary.opacity(0.35), lineWidth: 1)
+                                        )
+                                }
+                                Text(textColor.displayName)
+                            }
+                            .tag(textColor.rawValue)
+                        }
                     }
                 }
+                .listRowBackground(appTheme.surface)
 
                 // Calculator Settings
                 Section("Calculator") {
@@ -51,6 +74,7 @@ struct SettingsView: View {
 
                     Stepper("History Limit: \(historyLimit)", value: $historyLimit, in: 100...5000, step: 100)
                 }
+                .listRowBackground(appTheme.surface)
 
                 // Data Management
                 Section("Data") {
@@ -74,6 +98,7 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("ClearAllFunctionsButton")
                 }
+                .listRowBackground(appTheme.surface)
 
                 // About
                 Section("About") {
@@ -98,8 +123,11 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+                .listRowBackground(appTheme.surface)
             }
             .navigationTitle("Settings")
+            .scrollContentBackground(.hidden)
+            .background(appTheme.background)
             .alert(
                 "Clear all variables?",
                 isPresented: $showClearVariablesConfirmation,

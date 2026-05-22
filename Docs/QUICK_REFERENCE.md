@@ -17,6 +17,8 @@ xcodebuild -project MathCLI.xcodeproj -scheme MathCLI -destination 'platform=iOS
 
 - iOS/iPadOS only.
 - Calculator, History, Operations, and Settings tabs are the supported surfaces.
+- Calculator input accepts both command syntax (`add 5 10`) and scientific expressions (`7 + 9 * 2`, `sqrt(16) + sin(0)`).
+- Expressions and commands share variables, user functions, `$`, and `ans`.
 - History exports current/all sessions to JSON or Markdown.
 - Settings exports/imports app data as JSON.
 - Destructive Settings/History actions require confirmation.

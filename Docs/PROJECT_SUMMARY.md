@@ -1,10 +1,10 @@
 # Project Summary
 
-MathCLI is an iOS/iPadOS SwiftUI calculator app built around typed command execution, session history, variables, user functions, operation browsing, and export/import workflows.
+MathCLI is an iOS/iPadOS SwiftUI calculator app built around typed command execution, scientific expression input, session history, variables, user functions, operation browsing, and export/import workflows.
 
 ## Current Supported Surfaces
 
-- Calculator: command input, autocomplete suggestions, chained commands, quick operation buttons, session tabs, rename/switch/close behavior.
+- Calculator: command input, scientific expressions, autocomplete suggestions, chained commands, quick operation buttons, session tabs, rename/switch/close behavior.
 - History: active/past sessions, calculation details, bookmarks, search, delete, JSON export, Markdown export, destructive confirmations.
 - Operations: categorized operation list and operation help.
 - Settings: display/calculator preferences, app-data JSON export/import, destructive confirmations for clearing variables/functions.
@@ -18,6 +18,7 @@ MathCLI is an iOS/iPadOS SwiftUI calculator app built around typed command execu
 - Plotting operations return deterministic summaries for later chart rendering.
 - iCloud sync is future work and is not an active setting.
 - Full DataFrame workspaces, rendered charts, widgets, Shortcuts/App Intents, and Mac Catalyst are future work.
+- Expression input supports standard scientific-calculator operations, order of operations, assignment, constants, functions, and shared session variables.
 
 ## Verification
 
