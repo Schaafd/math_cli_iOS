@@ -5,6 +5,7 @@
 
 import XCTest
 import SwiftData
+import SwiftUI
 @testable import MathCLI
 
 final class MathCLITests: XCTestCase {
@@ -52,6 +53,63 @@ final class MathCLITests: XCTestCase {
         XCTAssertThrowsError(try executor.execute(command: "divide 1 0")) { error in
             XCTAssertTrue(error.localizedDescription.contains("Division by zero"))
         }
+    }
+
+    func testOperationExecutorScientificExpressions() throws {
+        let executor = OperationExecutor()
+
+        XCTAssertEqual(try executor.execute(command: "7 + 9").description, "16")
+        XCTAssertEqual(try executor.execute(command: "7 + 9 * 2").description, "25")
+        XCTAssertEqual(try executor.execute(command: "(7 + 9) * 2").description, "32")
+        XCTAssertEqual(try executor.execute(command: "2 ^ 3 ^ 2").description, "512")
+        XCTAssertEqual(try executor.execute(command: "-2 ^ 2").description, "-4")
+        XCTAssertEqual(try executor.execute(command: "sqrt(16) + sin(0)").description, "4")
+        XCTAssertEqual(try executor.execute(command: "5! + 10 % 4").description, "122")
+        XCTAssertEqual(try executor.execute(command: "mean(2, 4, 6) + max(1, 3, 2)").description, "7")
+    }
+
+    func testExpressionVariablesAndCommandFunctionsShareSessionState() throws {
+        let executor = OperationExecutor()
+
+        XCTAssertEqual(try executor.execute(command: "set x 7 + 9").description, "16")
+        XCTAssertEqual(try executor.execute(command: "multiply $x 2").description, "32")
+
+        XCTAssertEqual(try executor.execute(command: "y = x / 4").description, "4")
+        XCTAssertEqual(try executor.execute(command: "add $y 1").description, "5")
+        XCTAssertEqual(try executor.execute(command: "x + ans").description, "21")
+
+        _ = try executor.execute(command: "def double x \"multiply $x 2\"")
+        XCTAssertEqual(try executor.execute(command: "double(9) + 1").description, "19")
+        XCTAssertEqual(try executor.execute(command: "double 10").description, "20")
+    }
+
+    func testExpressionErrors() throws {
+        let executor = OperationExecutor()
+
+        XCTAssertThrowsError(try executor.execute(command: "7 / 0")) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Division by zero"))
+        }
+
+        XCTAssertThrowsError(try executor.execute(command: "7 + * 2")) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Expected number"))
+        }
+
+        XCTAssertThrowsError(try executor.execute(command: "sqrt(-1)")) { error in
+            XCTAssertTrue(error.localizedDescription.contains("finite"))
+        }
+
+        XCTAssertThrowsError(try executor.execute(command: "21!")) { error in
+            XCTAssertTrue(error.localizedDescription.contains("too large"))
+        }
+    }
+
+    func testThemeOptionsMapToAppThemeValues() {
+        XCTAssertEqual(MathCLITheme(rawValue: "ocean")?.displayName, "Ocean")
+        XCTAssertEqual(MathCLITheme(rawValue: "high-contrast")?.preferredColorScheme, .dark)
+        XCTAssertNil(MathCLITheme(rawValue: "default")?.preferredColorScheme)
+        XCTAssertEqual(MathCLITextFont(rawValue: "rounded")?.displayName, "Rounded")
+        XCTAssertEqual(MathCLITextColor(rawValue: "theme")?.displayName, "Theme Matched")
+        XCTAssertNotNil(MathCLITextColor(rawValue: "navy")?.color)
     }
 
     func testArithmeticStatisticsNumberTheoryMatrixAndCalculusOperations() throws {

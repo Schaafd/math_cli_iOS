@@ -583,35 +583,47 @@ struct SessionDetailView: View {
 }
 
 struct HistoryEntryRow: View {
+    @Environment(\.mathCLITheme) private var appTheme
+    @AppStorage("calculatorTextFont") private var calculatorTextFont = MathCLITextFont.monospaced.rawValue
+    @AppStorage("calculatorTextColor") private var calculatorTextColor = MathCLITextColor.theme.rawValue
+
     let entry: HistoryEntry
+
+    private var textFont: MathCLITextFont {
+        MathCLITextFont(rawValue: calculatorTextFont) ?? .monospaced
+    }
+
+    private var textColor: MathCLITextColor {
+        MathCLITextColor(rawValue: calculatorTextColor) ?? .theme
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 if entry.isBookmarked {
                     Image(systemName: "bookmark.fill")
-                        .foregroundColor(.orange)
+                        .foregroundColor(appTheme.infoText)
                         .font(.caption)
                 }
 
                 Text(entry.timestamp, style: .time)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(appTheme.secondaryText)
 
                 Spacer()
 
                 Text(entry.timestamp, style: .date)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(appTheme.secondaryText)
             }
 
             Text(entry.command)
-                .font(.system(.body, design: .monospaced))
-                .foregroundColor(.cyan)
+                .font(.system(.body, design: textFont.design))
+                .foregroundColor(textColor.color ?? appTheme.commandText)
 
             Text(entry.result)
-                .font(.system(.body, design: .monospaced))
-                .foregroundColor(.green)
+                .font(.system(.body, design: textFont.design))
+                .foregroundColor(textColor.color ?? appTheme.resultText)
                 .lineLimit(3)
         }
         .padding(.vertical, 4)

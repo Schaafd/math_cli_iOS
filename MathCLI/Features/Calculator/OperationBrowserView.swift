@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct OperationBrowserView: View {
+    @Environment(\.mathCLITheme) private var appTheme
     @State private var searchText = ""
     @State private var selectedCategory: OperationCategory?
 
@@ -27,14 +28,19 @@ struct OperationBrowserView: View {
                         CategoryRow(category: category)
                     }
                 }
+                .listRowBackground(appTheme.surface)
             }
             .searchable(text: $searchText, prompt: "Search operations")
             .navigationTitle("Operations")
+            .scrollContentBackground(.hidden)
+            .background(appTheme.background)
         }
     }
 }
 
 struct CategoryRow: View {
+    @Environment(\.mathCLITheme) private var appTheme
+
     let category: OperationCategory
 
     private let registry = OperationRegistry.shared
@@ -48,16 +54,17 @@ struct CategoryRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(category.rawValue)
                     .font(.headline)
+                    .foregroundColor(appTheme.primaryText)
 
                 Text("\(operationCount) operations")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(appTheme.secondaryText)
             }
 
             Spacer()
 
             Image(systemName: categoryIcon)
-                .foregroundColor(.blue)
+                .foregroundColor(appTheme.accent)
                 .font(.title2)
         }
         .padding(.vertical, 4)
@@ -90,6 +97,8 @@ struct CategoryRow: View {
 }
 
 struct CategoryDetailView: View {
+    @Environment(\.mathCLITheme) private var appTheme
+
     let category: OperationCategory
 
     private let registry = OperationRegistry.shared
@@ -106,23 +115,39 @@ struct CategoryDetailView: View {
                     operationType: operation.1
                 )
             }
+            .listRowBackground(appTheme.surface)
         }
         .navigationTitle(category.rawValue)
+        .scrollContentBackground(.hidden)
+        .background(appTheme.background)
     }
 }
 
 struct OperationDetailRow: View {
+    @Environment(\.mathCLITheme) private var appTheme
+    @AppStorage("calculatorTextFont") private var calculatorTextFont = MathCLITextFont.monospaced.rawValue
+    @AppStorage("calculatorTextColor") private var calculatorTextColor = MathCLITextColor.theme.rawValue
+
     let name: String
     let operationType: any MathOperation.Type
 
     @State private var showDetails = false
 
+    private var textFont: MathCLITextFont {
+        MathCLITextFont(rawValue: calculatorTextFont) ?? .monospaced
+    }
+
+    private var bodyTextColor: Color {
+        MathCLITextColor(rawValue: calculatorTextColor)?.color ?? appTheme.primaryText
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(name)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(.body, design: textFont.design))
                     .fontWeight(.semibold)
+                    .foregroundColor(bodyTextColor)
 
                 Spacer()
 
@@ -130,7 +155,7 @@ struct OperationDetailRow: View {
                     showDetails.toggle()
                 } label: {
                     Image(systemName: showDetails ? "chevron.up" : "chevron.down")
-                        .foregroundColor(.blue)
+                        .foregroundColor(appTheme.accent)
                 }
                 .accessibilityIdentifier("OperationDetailToggle_\(name)")
             }
@@ -139,25 +164,27 @@ struct OperationDetailRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Help:")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(appTheme.secondaryText)
 
                     Text(operationType.help)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(.system(.caption, design: textFont.design))
+                        .foregroundColor(bodyTextColor)
 
                     if !operationType.arguments.isEmpty {
                         Text("Arguments:")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(appTheme.secondaryText)
                             .padding(.top, 4)
 
                         Text(operationType.arguments.joined(separator: ", "))
-                            .font(.system(.caption, design: .monospaced))
+                            .font(.system(.caption, design: textFont.design))
+                            .foregroundColor(bodyTextColor)
                     }
 
                     if operationType.isVariadic {
                         Text("Accepts variable number of arguments")
                             .font(.caption)
-                            .foregroundColor(.orange)
+                            .foregroundColor(appTheme.infoText)
                             .padding(.top, 4)
                     }
                 }
