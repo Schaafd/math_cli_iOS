@@ -32,6 +32,7 @@ Physical-device builds still require normal Apple development provisioning with 
 
 - Calculator tab with command entry, scientific expressions like `7 + 9 * 2`, autocomplete suggestions, quick operations, chained commands, `$`/`ans` references, and session tabs.
 - Expression input and command input share session variables, user functions, and `ans`, so `set x 7 + 9`, `multiply $x 2`, and `x + ans` can be used together.
+- The calculator command bar starts with add/subtract/multiply/divide/power and can be customized from the Command Drawer. The input panel can switch between command-bar, calculator, and scientific-calculator layouts.
 - History tab with active/past sessions, bookmarks, search, JSON export, Markdown export, and confirmation for destructive clearing.
 - Operations tab with categorized operation help.
 - Settings tab with display/calculator preferences, app data export/import, and confirmation for clearing variables/functions.

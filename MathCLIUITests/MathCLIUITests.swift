@@ -35,6 +35,7 @@ final class MathCLIUITests: XCTestCase {
         input.typeText("sq")
         XCTAssertTrue(app.buttons["sqrt"].waitForExistence(timeout: 5))
         app.buttons["DismissKeyboardButton"].tap()
+        app.buttons["Dismiss Keyboard"].tap()
 
         app.tabBars.buttons["History"].tap()
         let sessionRow = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'calculation'")).firstMatch
@@ -58,6 +59,41 @@ final class MathCLIUITests: XCTestCase {
         clearVariablesButton.tap()
         XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
         app.buttons["Cancel"].tap()
+    }
+
+    @MainActor
+    func testCommandDrawerPinsCommandsAndInputLayoutsSwitch() throws {
+        XCTAssertTrue(app.buttons["CommandDrawerButton"].waitForExistence(timeout: 5))
+        app.buttons["CommandDrawerButton"].tap()
+
+        let search = app.textFields["CommandDrawerSearch"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("sqrt")
+        XCTAssertTrue(app.buttons["PinCommand_sqrt"].waitForExistence(timeout: 5))
+        app.buttons["CommandCard_sqrt"].tap()
+        XCTAssertTrue(app.staticTexts["Parameters"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["x"].exists)
+        app.buttons["Done"].tap()
+
+        app.buttons["PinCommand_sqrt"].tap()
+        app.buttons["Done"].tap()
+
+        XCTAssertTrue(app.buttons["QuickCommand_sqrt"].waitForExistence(timeout: 5))
+        app.buttons["QuickCommand_sqrt"].tap()
+        XCTAssertTrue(app.textFields["CalculatorInput"].valueAsString.contains("sqrt"))
+        app.textFields["CalculatorInput"].press(forDuration: 0.8)
+        XCTAssertTrue(app.staticTexts["Command Help"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["sqrt"].exists)
+        app.buttons["Done"].tap()
+
+        app.buttons["DismissKeyboardButton"].tap()
+        app.buttons["Scientific"].tap()
+        XCTAssertTrue(app.buttons["CalculatorKey_sin"].waitForExistence(timeout: 5))
+
+        app.buttons["DismissKeyboardButton"].tap()
+        app.buttons["Calculator"].tap()
+        XCTAssertTrue(app.buttons["CalculatorKey_7"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -103,5 +139,9 @@ private extension XCUIElement {
         let deleteString = String(repeating: XCUIKeyboardKey.delete.rawValue, count: currentValue.count)
         typeText(deleteString)
         typeText(text)
+    }
+
+    var valueAsString: String {
+        value as? String ?? ""
     }
 }

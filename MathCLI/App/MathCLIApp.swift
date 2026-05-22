@@ -175,6 +175,14 @@ enum MathCLITheme: String, CaseIterable, Identifiable {
         case .highContrast: return .white
         }
     }
+
+    /// Foreground color to use on top of `accent` backgrounds for legible contrast.
+    var onAccent: Color {
+        switch self {
+        case .highContrast: return .black
+        default: return .white
+        }
+    }
 }
 
 enum MathCLITextFont: String, CaseIterable, Identifiable {
@@ -246,6 +254,30 @@ enum MathCLITextColor: String, CaseIterable, Identifiable {
     }
 }
 
+enum CalculatorInputPanel: String, CaseIterable, Identifiable {
+    case commandBar = "command-bar"
+    case calculator = "calculator"
+    case scientific = "scientific"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .commandBar: return "Command Bar"
+        case .calculator: return "Calculator"
+        case .scientific: return "Scientific"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .commandBar: return "rectangle.grid.1x2"
+        case .calculator: return "plus.forwardslash.minus"
+        case .scientific: return "function"
+        }
+    }
+}
+
 private struct MathCLIThemeKey: EnvironmentKey {
     static let defaultValue = MathCLITheme.default
 }
@@ -265,6 +297,9 @@ struct MathCLIApp: App {
     init() {
         do {
             let isUITesting = ProcessInfo.processInfo.arguments.contains("-UITestMode")
+            if isUITesting {
+                Self.resetUITestDefaults()
+            }
 
             // Initialize model container with both Session and HistoryEntry
             let container: ModelContainer
@@ -288,6 +323,19 @@ struct MathCLIApp: App {
             let manager = SessionManager(modelContext: container.mainContext)
             _sessionManager = State(wrappedValue: manager)
             appLogger.error("Falling back to in-memory storage due to ModelContainer error: \(error.localizedDescription)")
+        }
+    }
+
+    private static func resetUITestDefaults() {
+        let defaults = UserDefaults.standard
+        [
+            "theme",
+            "calculatorTextFont",
+            "calculatorTextColor",
+            "calculatorInputPanel",
+            "pinnedCommands"
+        ].forEach { key in
+            defaults.removeObject(forKey: key)
         }
     }
 

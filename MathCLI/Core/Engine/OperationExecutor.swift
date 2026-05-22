@@ -119,6 +119,7 @@ class OperationExecutor {
                 }
 
                 result = try op.execute(args: args)
+                storeLastResult(result)
             }
         }
 
@@ -191,7 +192,7 @@ class OperationExecutor {
     }
 
     private func evaluateExpression(_ expression: String) throws -> OperationResult {
-        let parser = ExpressionParser(
+        let parser = try ExpressionParser(
             expression: expression,
             variableResolver: { name in
                 try self.resolveExpressionVariable(name)
@@ -476,8 +477,8 @@ private final class ExpressionParser {
         expression: String,
         variableResolver: @escaping (String) throws -> Double,
         functionResolver: @escaping (String, [Double]) throws -> Double
-    ) {
-        self.tokens = ExpressionParser.tokenize(expression)
+    ) throws {
+        self.tokens = try ExpressionParser.tokenize(expression)
         self.variableResolver = variableResolver
         self.functionResolver = functionResolver
     }
@@ -493,7 +494,7 @@ private final class ExpressionParser {
         return value
     }
 
-    private static func tokenize(_ expression: String) -> [Token] {
+    private static func tokenize(_ expression: String) throws -> [Token] {
         var tokens: [Token] = []
         var index = expression.startIndex
 
@@ -557,7 +558,7 @@ private final class ExpressionParser {
             case ")": tokens.append(.rightParen)
             case ",": tokens.append(.comma)
             default:
-                tokens.append(.identifier(String(char)))
+                throw OperationError.parsingError("Unsupported character '\(char)' in expression")
             }
             index = expression.index(after: index)
         }
