@@ -34,7 +34,7 @@ final class MathCLIUITests: XCTestCase {
         input.tap()
         input.typeText("sq")
         XCTAssertTrue(app.buttons["sqrt"].waitForExistence(timeout: 5))
-        app.buttons["DismissKeyboardButton"].tap()
+        app.buttons["KeyboardMenuButton"].tap()
         app.buttons["Dismiss Keyboard"].tap()
 
         app.tabBars.buttons["History"].tap()
@@ -95,7 +95,7 @@ final class MathCLIUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["sqrt"].exists)
         app.buttons["CommandDetailDoneButton"].tap()
 
-        app.buttons["DismissKeyboardButton"].tap()
+        app.buttons["KeyboardMenuButton"].tap()
         app.buttons["InputPanelOption_scientific"].tap()
         XCTAssertTrue(app.buttons["CalculatorKey_sin"].waitForExistence(timeout: 5))
         let keypadDrawer = app.otherElements["CalculatorKeypadDrawer"]
@@ -108,7 +108,7 @@ final class MathCLIUITests: XCTestCase {
         }
         XCTAssertTrue(executeKey.isHittable)
 
-        app.buttons["DismissKeyboardButton"].tap()
+        app.buttons["KeyboardMenuButton"].tap()
         app.buttons["InputPanelOption_calculator"].tap()
         XCTAssertTrue(app.buttons["CalculatorKey_7"].waitForExistence(timeout: 5))
     }
