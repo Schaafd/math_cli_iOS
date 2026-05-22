@@ -2,8 +2,8 @@
 //  DataAnalysisOperations.swift
 //  MathCLI
 //
-//  Data analysis operations - simplified array-based (12 operations)
-//  Full DataFrame implementation can be added later
+//  Data analysis operations - v1 array-based (12 operations)
+//  Full DataFrame workspace behavior is future work.
 //
 
 import Foundation
@@ -13,7 +13,7 @@ import Foundation
 struct LoadDataOperation: MathOperation {
     static var name = "load_data"
     static var arguments = ["filepath"]
-    static var help = "Load data from CSV file (simplified): load_data filepath"
+    static var help = "Inspect a CSV file and report row/column counts: load_data filepath"
     static var category = OperationCategory.dataAnalysis
 
     static func execute(args: [Any]) throws -> OperationResult {
@@ -99,6 +99,9 @@ struct CorrelationMatrixOperation: MathOperation {
         guard arr1.count == arr2.count else {
             throw OperationError.invalidValue("Arrays must have same length")
         }
+        guard arr1.count >= 2 else {
+            throw OperationError.invalidValue("Correlation requires at least 2 values")
+        }
 
         let n = Double(arr1.count)
         let mean1 = arr1.reduce(0, +) / n
@@ -116,17 +119,22 @@ struct CorrelationMatrixOperation: MathOperation {
             variance2 += diff2 * diff2
         }
 
-        let correlation = covariance / sqrt(variance1 * variance2)
+        let denominator = sqrt(variance1 * variance2)
+        guard denominator > 0 else {
+            throw OperationError.invalidValue("Correlation requires non-constant arrays")
+        }
+
+        let correlation = covariance / denominator
         return .number(correlation)
     }
 }
 
-// MARK: - Group By (Simplified)
+// MARK: - Group By
 
 struct GroupByOperation: MathOperation {
     static var name = "groupby"
     static var arguments = ["values...", "groups..."]
-    static var help = "Group and sum values (simplified): groupby val1 val2 ... (groups via count)"
+    static var help = "Sum a v1 value array: groupby val1 val2 ..."
     static var category = OperationCategory.dataAnalysis
     static var isVariadic = true
 
@@ -136,7 +144,10 @@ struct GroupByOperation: MathOperation {
             values.append(try parseDouble(arg, argumentName: "value"))
         }
 
-        // Simplified: return sum
+        guard !values.isEmpty else {
+            throw OperationError.invalidValue("No data provided")
+        }
+
         return .number(values.reduce(0, +))
     }
 }
@@ -195,12 +206,12 @@ struct MissingValuesOperation: MathOperation {
     }
 }
 
-// MARK: - Pivot Table (Simplified)
+// MARK: - Pivot Table
 
 struct PivotTableOperation: MathOperation {
     static var name = "pivot_table"
     static var arguments = ["values..."]
-    static var help = "Pivot table (simplified sum): pivot_table val1 val2 val3 ..."
+    static var help = "Summarize a v1 value array as a pivot total: pivot_table val1 val2 val3 ..."
     static var category = OperationCategory.dataAnalysis
     static var isVariadic = true
 
@@ -208,6 +219,10 @@ struct PivotTableOperation: MathOperation {
         var values: [Double] = []
         for arg in args {
             values.append(try parseDouble(arg, argumentName: "value"))
+        }
+
+        guard !values.isEmpty else {
+            throw OperationError.invalidValue("No data provided")
         }
 
         return .number(values.reduce(0, +))

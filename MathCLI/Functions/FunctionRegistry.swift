@@ -102,18 +102,14 @@ class FunctionRegistry {
 
     /// Remove a function
     func undefine(name: String) {
-        var removed = false
-        
         // First try to remove from current session
         if let sessionId = currentSessionId,
            sessionFunctions[sessionId]?.removeValue(forKey: name) != nil {
-            removed = true
             saveSessionFunctions()
         }
         
         // Also try to remove from global functions
         if functions.removeValue(forKey: name) != nil {
-            removed = true
             saveFunctions()
         }
     }

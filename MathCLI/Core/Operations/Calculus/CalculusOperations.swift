@@ -7,20 +7,18 @@
 
 import Foundation
 
-// Note: These are simplified numerical implementations
-// Full symbolic calculus would require a computer algebra system
+// These are v1 numerical and polynomial helpers.
+// Full symbolic calculus would require a computer algebra system.
 
 // MARK: - Derivative (Numerical)
 
 struct DerivativeOperation: MathOperation {
     static var name = "derivative"
-    static var arguments = ["function_expr", "x", "h"]
-    static var help = "Numerical derivative: derivative expr x [h] (uses central difference)"
+    static var arguments = ["coefficient", "exponent", "x"]
+    static var help = "Derivative of ax^n: derivative a n x"
     static var category = OperationCategory.calculus
 
     static func execute(args: [Any]) throws -> OperationResult {
-        // This is a placeholder - full implementation would need expression parsing
-        // For now, accept a simple power function coefficient and exponent
         let coefficient = try parseDouble(args[0], argumentName: "coefficient")
         let exponent = try parseDouble(args[1], argumentName: "exponent")
         let x = args.count > 2 ? try parseDouble(args[2], argumentName: "x") : 0.0
@@ -63,11 +61,10 @@ struct Derivative2Operation: MathOperation {
 struct PartialOperation: MathOperation {
     static var name = "partial"
     static var arguments = ["expr", "var"]
-    static var help = "Partial derivative (simplified): partial expr var"
+    static var help = "Partial derivative using v1 polynomial form: partial a n x"
     static var category = OperationCategory.calculus
 
     static func execute(args: [Any]) throws -> OperationResult {
-        // Simplified - same as regular derivative for now
         return try DerivativeOperation.execute(args: args)
     }
 }
@@ -115,11 +112,10 @@ struct GradientOperation: MathOperation {
 struct DivergenceOperation: MathOperation {
     static var name = "divergence"
     static var arguments = ["x_values", "y_values"]
-    static var help = "Divergence (simplified 2D): divergence x_vals y_vals"
+    static var help = "Divergence from two equal-length arrays: divergence x_vals y_vals"
     static var category = OperationCategory.calculus
 
     static func execute(args: [Any]) throws -> OperationResult {
-        // Simplified divergence calculation
         let xValues = try parseDoubleArray(args[0], argumentName: "x_values")
         let yValues = try parseDoubleArray(args[1], argumentName: "y_values")
 
@@ -248,7 +244,7 @@ struct LimitOperation: MathOperation {
 struct TaylorOperation: MathOperation {
     static var name = "taylor"
     static var arguments = ["function", "center", "terms"]
-    static var help = "Taylor series (simplified for e^x, sin, cos): taylor func center terms"
+    static var help = "Taylor series approximation for exp, sin, or cos: taylor func center terms"
     static var category = OperationCategory.calculus
 
     static func execute(args: [Any]) throws -> OperationResult {

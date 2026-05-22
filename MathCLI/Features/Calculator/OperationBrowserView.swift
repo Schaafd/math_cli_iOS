@@ -132,6 +132,7 @@ struct OperationDetailRow: View {
                     Image(systemName: showDetails ? "chevron.up" : "chevron.down")
                         .foregroundColor(.blue)
                 }
+                .accessibilityIdentifier("OperationDetailToggle_\(name)")
             }
 
             if showDetails {

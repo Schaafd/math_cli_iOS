@@ -14,8 +14,21 @@ import Accelerate
 
 // Helper to parse matrix from string like "[[1,2],[3,4]]"
 private func parseMatrix(_ value: Any) throws -> [[Double]] {
-    if let matrix = value as? [[Double]] {
+    func validate(_ matrix: [[Double]]) throws -> [[Double]] {
+        guard !matrix.isEmpty else {
+            throw OperationError.invalidValue("Matrix cannot be empty")
+        }
+        guard let firstRowCount = matrix.first?.count, firstRowCount > 0 else {
+            throw OperationError.invalidValue("Matrix rows cannot be empty")
+        }
+        guard matrix.allSatisfy({ $0.count == firstRowCount && !$0.isEmpty }) else {
+            throw OperationError.matrixDimensionMismatch
+        }
         return matrix
+    }
+
+    if let matrix = value as? [[Double]] {
+        return try validate(matrix)
     } else if let stringValue = value as? String {
         // Parse string representation
         let cleaned = stringValue
@@ -23,10 +36,17 @@ private func parseMatrix(_ value: Any) throws -> [[Double]] {
             .replacingOccurrences(of: "[[", with: "")
             .replacingOccurrences(of: "]]", with: "")
 
+        guard !cleaned.isEmpty && cleaned != "[]" else {
+            throw OperationError.invalidValue("Matrix cannot be empty")
+        }
+
         let rows = cleaned.components(separatedBy: "],[")
         var matrix: [[Double]] = []
 
         for row in rows {
+            guard !row.isEmpty else {
+                throw OperationError.invalidValue("Matrix rows cannot be empty")
+            }
             let elements = row.components(separatedBy: ",")
             let doubleElements = try elements.map { element -> Double in
                 guard let value = Double(element) else {
@@ -37,20 +57,94 @@ private func parseMatrix(_ value: Any) throws -> [[Double]] {
             matrix.append(doubleElements)
         }
 
-        // Validate matrix (all rows same length)
-        if let firstRowCount = matrix.first?.count {
-            guard matrix.allSatisfy({ $0.count == firstRowCount }) else {
-                throw OperationError.matrixDimensionMismatch
-            }
-        }
-
-        return matrix
+        return try validate(matrix)
     } else {
         throw OperationError.invalidArgumentType(
             argument: "matrix",
             expected: "matrix array",
             got: String(describing: value)
         )
+    }
+}
+
+private func determinantUsingElimination(_ matrix: [[Double]]) throws -> Double {
+    var m = matrix
+    let n = m.count
+    var determinant = 1.0
+
+    for i in 0..<n {
+        var pivotRow = i
+        for row in (i + 1)..<n {
+            if abs(m[row][i]) > abs(m[pivotRow][i]) {
+                pivotRow = row
+            }
+        }
+
+        guard abs(m[pivotRow][i]) > 1e-12 else {
+            return 0
+        }
+
+        if pivotRow != i {
+            m.swapAt(i, pivotRow)
+            determinant *= -1
+        }
+
+        let pivot = m[i][i]
+        determinant *= pivot
+
+        for row in (i + 1)..<n {
+            let factor = m[row][i] / pivot
+            for col in i..<n {
+                m[row][col] -= factor * m[i][col]
+            }
+        }
+    }
+
+    return determinant
+}
+
+private func inverseUsingGaussJordan(_ matrix: [[Double]]) throws -> [[Double]] {
+    let n = matrix.count
+    var augmented = Array(repeating: Array(repeating: 0.0, count: 2 * n), count: n)
+
+    for row in 0..<n {
+        for col in 0..<n {
+            augmented[row][col] = matrix[row][col]
+        }
+        augmented[row][n + row] = 1.0
+    }
+
+    for pivotIndex in 0..<n {
+        var pivotRow = pivotIndex
+        for row in pivotIndex..<n {
+            if abs(augmented[row][pivotIndex]) > abs(augmented[pivotRow][pivotIndex]) {
+                pivotRow = row
+            }
+        }
+
+        guard abs(augmented[pivotRow][pivotIndex]) > 1e-12 else {
+            throw OperationError.singularMatrix
+        }
+
+        if pivotRow != pivotIndex {
+            augmented.swapAt(pivotIndex, pivotRow)
+        }
+
+        let pivot = augmented[pivotIndex][pivotIndex]
+        for col in 0..<(2 * n) {
+            augmented[pivotIndex][col] /= pivot
+        }
+
+        for row in 0..<n where row != pivotIndex {
+            let factor = augmented[row][pivotIndex]
+            for col in 0..<(2 * n) {
+                augmented[row][col] -= factor * augmented[pivotIndex][col]
+            }
+        }
+    }
+
+    return augmented.map { row in
+        Array(row[n..<(2 * n)])
     }
 }
 
@@ -72,39 +166,7 @@ struct DetOperation: MathOperation {
             throw OperationError.invalidValue("Determinant requires square matrix")
         }
 
-        // Flatten matrix for LAPACK
-        var flatMatrix = matrix.flatMap { $0 }
-        let n = Int32(rows)
-        var pivots = [Int32](repeating: 0, count: rows)
-        
-        // LU decomposition using safe buffer pointer access
-        let info = flatMatrix.withUnsafeMutableBufferPointer { matrixBuffer in
-            pivots.withUnsafeMutableBufferPointer { pivotsBuffer in
-                var nRows = n
-                var nCols = n
-                var lda = n
-                var infoResult: Int32 = 0
-                
-                dgetrf_(&nRows, &nCols, matrixBuffer.baseAddress!, &lda, pivotsBuffer.baseAddress!, &infoResult)
-                return infoResult
-            }
-        }
-
-        guard info == 0 else {
-            throw OperationError.executionError("Matrix decomposition failed")
-        }
-
-        // Calculate determinant from diagonal
-        var det: Double = 1.0
-        for i in 0..<rows {
-            det *= flatMatrix[i * rows + i]
-            // Account for row swaps
-            if pivots[i] != Int32(i + 1) {
-                det *= -1
-            }
-        }
-
-        return .number(det)
+        return .number(try determinantUsingElimination(matrix))
     }
 }
 
@@ -167,8 +229,8 @@ struct EigenvaluesOperation: MathOperation {
                     var infoResult: Int32 = 0
                     
                     // Left and right eigenvectors not computed (nil pointers)
-                    var vl: UnsafeMutablePointer<Double>? = nil
-                    var vr: UnsafeMutablePointer<Double>? = nil
+                    let vl: UnsafeMutablePointer<Double>? = nil
+                    let vr: UnsafeMutablePointer<Double>? = nil
                     var ldvl = Int32(1)
                     var ldvr = Int32(1)
                     
@@ -191,7 +253,7 @@ struct EigenvaluesOperation: MathOperation {
     }
 }
 
-// MARK: - Eigenvectors (simplified)
+// MARK: - Eigenvectors
 
 struct EigenvectorsOperation: MathOperation {
     static var name = "eigenvectors"
@@ -207,8 +269,49 @@ struct EigenvectorsOperation: MathOperation {
             throw OperationError.invalidValue("Eigenvectors require square matrix")
         }
 
-        // This is a complex operation - return placeholder
-        return .string("Eigenvector calculation available (use specialized library for full implementation)")
+        guard n == 2 else {
+            throw OperationError.invalidValue("Eigenvectors support 2x2 real matrices in v1")
+        }
+
+        let a = matrix[0][0]
+        let b = matrix[0][1]
+        let c = matrix[1][0]
+        let d = matrix[1][1]
+        let trace = a + d
+        let determinant = a * d - b * c
+        let discriminant = trace * trace - 4 * determinant
+
+        guard discriminant >= 0 else {
+            throw OperationError.invalidValue("Eigenvectors require real eigenvalues in v1")
+        }
+
+        let root = sqrt(discriminant)
+        let eigenvalues = [(trace + root) / 2, (trace - root) / 2]
+
+        let vectors = eigenvalues.map { lambda -> [Double] in
+            let x: Double
+            let y: Double
+
+            if abs(b) < 1e-12 && abs(c) < 1e-12 {
+                return abs(lambda - a) <= abs(lambda - d) ? [1.0, 0.0] : [0.0, 1.0]
+            }
+
+            if abs(b) > abs(c) {
+                x = b
+                y = lambda - a
+            } else {
+                x = lambda - d
+                y = c
+            }
+
+            let length = sqrt(x * x + y * y)
+            if length < 1e-12 {
+                return [1.0, 0.0]
+            }
+            return [x / length, y / length]
+        }
+
+        return .matrix(vectors)
     }
 }
 
@@ -300,55 +403,7 @@ struct InverseOperation: MathOperation {
             throw OperationError.invalidValue("Inverse requires square matrix")
         }
 
-        var flatMatrix = matrix.flatMap { $0 }
-        var pivots = [Int32](repeating: 0, count: n)
-
-        // LU decomposition using safe buffer pointer access
-        let decompInfo = flatMatrix.withUnsafeMutableBufferPointer { matrixBuffer in
-            pivots.withUnsafeMutableBufferPointer { pivotsBuffer in
-                var nRows = Int32(n)
-                var nCols = Int32(n)
-                var lda = Int32(n)
-                var infoResult: Int32 = 0
-                
-                dgetrf_(&nRows, &nCols, matrixBuffer.baseAddress!, &lda, pivotsBuffer.baseAddress!, &infoResult)
-                return infoResult
-            }
-        }
-
-        guard decompInfo == 0 else {
-            throw OperationError.singularMatrix
-        }
-
-        // Compute inverse using safe buffer pointer access
-        let invInfo = flatMatrix.withUnsafeMutableBufferPointer { matrixBuffer in
-            pivots.withUnsafeMutableBufferPointer { pivotsBuffer in
-                var nSize = Int32(n)
-                var lda = Int32(n)
-                var lwork = Int32(n * n)
-                var work = [Double](repeating: 0, count: Int(lwork))
-                var infoResult: Int32 = 0
-                
-                dgetri_(&nSize, matrixBuffer.baseAddress!, &lda, pivotsBuffer.baseAddress!, &work, &lwork, &infoResult)
-                return infoResult
-            }
-        }
-
-        guard invInfo == 0 else {
-            throw OperationError.singularMatrix
-        }
-
-        // Reconstruct matrix
-        var result: [[Double]] = []
-        for i in 0..<n {
-            var row: [Double] = []
-            for j in 0..<n {
-                row.append(flatMatrix[i * n + j])
-            }
-            result.append(row)
-        }
-
-        return .matrix(result)
+        return .matrix(try inverseUsingGaussJordan(matrix))
     }
 }
 
@@ -468,6 +523,10 @@ struct DiagonalOperation: MathOperation {
         for arg in args {
             let value = try parseDouble(arg, argumentName: "value")
             values.append(value)
+        }
+
+        guard !values.isEmpty else {
+            throw OperationError.invalidValue("Diagonal requires at least one value")
         }
 
         let n = values.count

@@ -2,7 +2,7 @@
 //  DataTransformOperations.swift
 //  MathCLI
 //
-//  Data transformation operations - simplified array-based (11 operations)
+//  Data transformation operations - v1 array-based (11 operations)
 //
 
 import Foundation
@@ -38,7 +38,7 @@ struct FilterDataOperation: MathOperation {
 struct NormalizeDataOperation: MathOperation {
     static var name = "normalize_data"
     static var arguments = ["values..."]
-    static var help = "Normalize to [0,1] range: normalize_data val1 val2 val3 ..."
+    static var help = "Normalize values to [0,1]; constant arrays return 0.5 values: normalize_data val1 val2 ..."
     static var category = OperationCategory.dataTransform
     static var isVariadic = true
 
@@ -155,6 +155,10 @@ struct FillNullsOperation: MathOperation {
             values.append(val == 0 ? fillValue : val)
         }
 
+        guard !values.isEmpty else {
+            throw OperationError.invalidValue("No data provided")
+        }
+
         return .array(values)
     }
 }
@@ -177,6 +181,10 @@ struct DropNullsOperation: MathOperation {
             }
         }
 
+        guard !args.isEmpty else {
+            throw OperationError.invalidValue("No data provided")
+        }
+
         return .array(values)
     }
 }
@@ -194,6 +202,10 @@ struct MergeDataOperation: MathOperation {
         var values: [Double] = []
         for arg in args {
             values.append(try parseDouble(arg, argumentName: "value"))
+        }
+
+        guard !values.isEmpty else {
+            throw OperationError.invalidValue("No data provided")
         }
 
         return .array(values)
@@ -230,7 +242,7 @@ struct SampleDataOperation: MathOperation {
     }
 }
 
-// MARK: - Add Column (Simplified)
+// MARK: - Add Column
 
 struct AddColumnOperation: MathOperation {
     static var name = "add_column"
@@ -256,7 +268,7 @@ struct AddColumnOperation: MathOperation {
     }
 }
 
-// MARK: - Drop Column (Simplified)
+// MARK: - Drop Column
 
 struct DropColumnOperation: MathOperation {
     static var name = "drop_column"
@@ -286,12 +298,12 @@ struct DropColumnOperation: MathOperation {
     }
 }
 
-// MARK: - Rename Column (Simplified)
+// MARK: - Rename Column
 
 struct RenameColumnOperation: MathOperation {
     static var name = "rename_column"
     static var arguments = ["old_name", "new_name"]
-    static var help = "Rename column (placeholder): rename_column old_name new_name"
+    static var help = "Return a v1 rename mapping: rename_column old_name new_name"
     static var category = OperationCategory.dataTransform
 
     static func execute(args: [Any]) throws -> OperationResult {

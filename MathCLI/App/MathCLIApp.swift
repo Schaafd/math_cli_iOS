@@ -7,6 +7,9 @@
 
 import SwiftUI
 import SwiftData
+import OSLog
+
+private let appLogger = Logger(subsystem: "com.codingzen.MathCLI", category: "App")
 
 @main
 struct MathCLIApp: App {
@@ -15,8 +18,16 @@ struct MathCLIApp: App {
 
     init() {
         do {
+            let isUITesting = ProcessInfo.processInfo.arguments.contains("-UITestMode")
+
             // Initialize model container with both Session and HistoryEntry
-            let container = try ModelContainer(for: Session.self, HistoryEntry.self)
+            let container: ModelContainer
+            if isUITesting {
+                let config = ModelConfiguration(isStoredInMemoryOnly: true)
+                container = try ModelContainer(for: Session.self, HistoryEntry.self, configurations: config)
+            } else {
+                container = try ModelContainer(for: Session.self, HistoryEntry.self)
+            }
             modelContainer = container
 
             // Initialize session manager
@@ -30,7 +41,7 @@ struct MathCLIApp: App {
 
             let manager = SessionManager(modelContext: container.mainContext)
             _sessionManager = State(wrappedValue: manager)
-            print("Warning: falling back to in-memory storage due to ModelContainer error: \(error)")
+            appLogger.error("Falling back to in-memory storage due to ModelContainer error: \(error.localizedDescription)")
         }
     }
 

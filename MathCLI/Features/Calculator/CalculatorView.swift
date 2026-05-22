@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct CalculatorView: View {
     @Environment(\.modelContext) private var modelContext
@@ -68,6 +69,7 @@ struct CalculatorView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
+                    .accessibilityIdentifier("CalculatorMenuButton")
                 }
             }
             .sheet(isPresented: $showingRenameSheet) {
@@ -87,13 +89,6 @@ struct CalculatorView: View {
     private var sessionTabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                // Debug: Show session count
-                if activeSessions.isEmpty {
-                    Text("No sessions - Debug")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                }
-
                 ForEach(activeSessions) { session in
                     SessionTab(
                         session: session,
@@ -123,6 +118,7 @@ struct CalculatorView: View {
                         .background(Color(uiColor: .tertiarySystemBackground))
                         .cornerRadius(6)
                 }
+                .accessibilityIdentifier("NewSessionButton")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -136,6 +132,7 @@ struct CalculatorView: View {
             Form {
                 TextField("Session Name", text: $newSessionName)
                     .textInputAutocapitalization(.words)
+                    .accessibilityIdentifier("RenameSessionInput")
             }
             .navigationTitle("Rename Session")
             .navigationBarTitleDisplayMode(.inline)
@@ -153,6 +150,7 @@ struct CalculatorView: View {
                         showingRenameSheet = false
                     }
                     .disabled(newSessionName.isEmpty)
+                    .accessibilityIdentifier("SaveRenameSessionButton")
                 }
             }
         }
@@ -162,10 +160,6 @@ struct CalculatorView: View {
     // MARK: - Helper Methods
 
     private func setupCurrentSession() {
-        print("🔍 CalculatorView.setupCurrentSession: Called")
-        print("🔍 CalculatorView: SessionManager has \(sessionManager.sessions.count) sessions")
-        print("🔍 CalculatorView: Active session: \(sessionManager.activeSession?.name ?? "nil")")
-
         // Initialize history manager if needed
         if historyManager == nil {
             historyManager = HistoryManager(modelContext: modelContext)
@@ -179,10 +173,6 @@ struct CalculatorView: View {
 
             // Load session history to restore output lines
             viewModel.loadSessionHistory(session)
-
-            print("🔍 CalculatorView.setupCurrentSession: Setup complete for session: \(session.name)")
-        } else {
-            print("🔍 CalculatorView.setupCurrentSession: WARNING - No active session!")
         }
     }
 
@@ -229,7 +219,7 @@ struct CalculatorView: View {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
 
-        sessionManager.createSession()
+        _ = sessionManager.createSession()
         if let newSession = sessionManager.activeSession {
             switchToSession(newSession)
         }
@@ -298,7 +288,16 @@ struct CalculatorView: View {
                     .font(.system(.body, design: .monospaced))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .accessibilityIdentifier("CalculatorInput")
                     .focused($isInputFocused)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") {
+                                isInputFocused = false
+                            }
+                        }
+                    }
                     .onSubmit {
                         viewModel.executeCommand()
                         isInputFocused = true
@@ -306,6 +305,15 @@ struct CalculatorView: View {
                     .onChange(of: viewModel.inputText) { _, _ in
                         viewModel.updateSuggestions()
                     }
+
+                Button {
+                    isInputFocused = false
+                } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                }
+                .accessibilityIdentifier("DismissKeyboardButton")
 
                 // Execute button
                 Button {
@@ -317,6 +325,7 @@ struct CalculatorView: View {
                         .foregroundColor(viewModel.inputText.isEmpty ? .gray : .blue)
                 }
                 .disabled(viewModel.inputText.isEmpty)
+                .accessibilityIdentifier("ExecuteButton")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -435,6 +444,7 @@ struct SessionTab: View {
                         .fontWeight(isActive ? .semibold : .regular)
                         .foregroundColor(isActive ? .primary : .secondary)
                         .lineLimit(1)
+                        .accessibilityIdentifier("SessionTab_\(session.name)")
 
                     Text("\(session.entryCount) entries")
                         .font(.system(.caption2, design: .monospaced))

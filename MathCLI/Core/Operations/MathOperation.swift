@@ -78,7 +78,20 @@ enum OperationResult: Codable {
         if value.truncatingRemainder(dividingBy: 1) == 0 && abs(value) < Double(Int.max) {
             return String(format: "%.0f", value)
         }
-        return String(format: "%.6f", value).trimmingCharacters(in: CharacterSet(charactersIn: "0")).trimmingCharacters(in: CharacterSet(charactersIn: "."))
+
+        var formatted = String(format: "%.6f", value)
+        while formatted.hasSuffix("0") {
+            formatted.removeLast()
+        }
+        if formatted.hasSuffix(".") {
+            formatted.removeLast()
+        }
+        if formatted.hasPrefix(".") {
+            formatted = "0" + formatted
+        } else if formatted.hasPrefix("-.") {
+            formatted = formatted.replacingOccurrences(of: "-.", with: "-0.")
+        }
+        return formatted
     }
 }
 
@@ -214,10 +227,17 @@ extension MathOperation {
     /// Parse a value as array of Doubles, handling various input types
     static func parseDoubleArray(_ value: Any, argumentName: String) throws -> [Double] {
         if let array = value as? [Double] {
+            guard !array.isEmpty else {
+                throw OperationError.invalidValue("\(argumentName) cannot be empty")
+            }
             return array
         } else if let stringValue = value as? String {
+            let trimmed = stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                throw OperationError.invalidValue("\(argumentName) cannot be empty")
+            }
             let components = stringValue.components(separatedBy: ",")
-            return try components.map { component in
+            let parsed = try components.map { component in
                 guard let doubleValue = Double(component.trimmingCharacters(in: .whitespaces)) else {
                     throw OperationError.invalidArgumentType(
                         argument: argumentName,
@@ -227,6 +247,10 @@ extension MathOperation {
                 }
                 return doubleValue
             }
+            guard !parsed.isEmpty else {
+                throw OperationError.invalidValue("\(argumentName) cannot be empty")
+            }
+            return parsed
         } else {
             throw OperationError.invalidArgumentType(
                 argument: argumentName,

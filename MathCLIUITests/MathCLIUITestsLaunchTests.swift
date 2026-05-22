@@ -2,32 +2,22 @@
 //  MathCLIUITestsLaunchTests.swift
 //  MathCLIUITests
 //
-//  Created by David Schaaf on 11/1/25.
-//
 
 import XCTest
 
 final class MathCLIUITestsLaunchTests: XCTestCase {
-
-    override class var runsForEachTargetApplicationUIConfiguration: Bool {
-        true
-    }
-
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
     @MainActor
-    func testLaunch() throws {
+    func testLaunchShowsCalculator() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-UITestMode"]
         app.launch()
 
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
-
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Launch Screen"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        XCTAssertTrue(app.tabBars.buttons["Calculator"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["CalculatorInput"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Welcome to Math CLI"].exists)
     }
 }

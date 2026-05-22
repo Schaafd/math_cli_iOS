@@ -2,13 +2,12 @@
 //  PlottingOperations.swift
 //  MathCLI
 //
-//  Plotting operations - prepare chart data for Swift Charts (8 operations)
+//  Plotting operations - prepare deterministic chart-ready summaries (8 operations)
 //
 
 import Foundation
 
-// Note: These operations prepare data for plotting
-// Actual visualization will be handled by Swift Charts in the UI layer
+// These operations return chart-ready summaries. Rendering is intentionally out of scope for v1.
 
 // MARK: - Plot Histogram
 
@@ -37,6 +36,13 @@ struct PlotHistOperation: MathOperation {
 
         let minValue = values.min()!
         let maxValue = values.max()!
+
+        if minValue == maxValue {
+            var histogram = Array(repeating: 0, count: bins)
+            histogram[0] = values.count
+            return .string("Histogram: \(bins) bins, constant value \(minValue), counts: \(histogram)")
+        }
+
         let binWidth = (maxValue - minValue) / Double(bins)
 
         var histogram = Array(repeating: 0, count: bins)
@@ -99,6 +105,9 @@ struct PlotScatterOperation: MathOperation {
         guard xValues.count == yValues.count else {
             throw OperationError.invalidValue("X and Y arrays must have same length")
         }
+        guard !xValues.isEmpty else {
+            throw OperationError.invalidValue("No data provided")
+        }
 
         let points = zip(xValues, yValues).map { "(\($0), \($1))" }.joined(separator: ", ")
         return .string("Scatter Plot: \(xValues.count) points: \(points)")
@@ -134,6 +143,10 @@ struct PlotOperation: MathOperation {
         var values: [Double] = []
         for arg in args {
             values.append(try parseDouble(arg, argumentName: "value"))
+        }
+
+        guard !values.isEmpty else {
+            throw OperationError.invalidValue("No data provided")
         }
 
         return .string("Plot: \(values.count) data points")

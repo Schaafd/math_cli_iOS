@@ -8,6 +8,9 @@
 import Foundation
 import SwiftData
 import Combine
+import OSLog
+
+private let historyLogger = Logger(subsystem: "com.codingzen.MathCLI", category: "History")
 
 @Model
 final class HistoryEntry {
@@ -139,7 +142,7 @@ class HistoryManager: ObservableObject {
                 entries = try modelContext.fetch(descriptor)
             }
         } catch {
-            print("Failed to load history: \(error)")
+            historyLogger.error("Failed to load history: \(error.localizedDescription)")
             entries = []
         }
     }
@@ -148,7 +151,7 @@ class HistoryManager: ObservableObject {
         do {
             try modelContext.save()
         } catch {
-            print("Failed to save history: \(error)")
+            historyLogger.error("Failed to save history: \(error.localizedDescription)")
         }
     }
 

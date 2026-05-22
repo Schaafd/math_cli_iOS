@@ -7,6 +7,9 @@
 
 import Foundation
 import SwiftData
+import OSLog
+
+private let sessionLogger = Logger(subsystem: "com.codingzen.MathCLI", category: "Session")
 
 @Model
 final class Session {
@@ -50,7 +53,6 @@ class SessionManager {
 
         // Ensure there's always an initial active session
         if currentSession == nil {
-            print("🔍 SessionManager init: No active session found, creating initial session")
             let _ = createNewSession(name: "Session \(Date().formatted(date: .abbreviated, time: .shortened))")
         }
     }
@@ -73,7 +75,7 @@ class SessionManager {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
         } catch {
-            print("Failed to save new session: \(error)")
+            sessionLogger.error("Failed to save new session: \(error.localizedDescription)")
         }
 
         return session
@@ -88,7 +90,7 @@ class SessionManager {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
         } catch {
-            print("Failed to switch session: \(error)")
+            sessionLogger.error("Failed to switch session: \(error.localizedDescription)")
         }
     }
 
@@ -103,7 +105,7 @@ class SessionManager {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
         } catch {
-            print("Failed to reopen session: \(error)")
+            sessionLogger.error("Failed to reopen session: \(error.localizedDescription)")
         }
     }
 
@@ -111,7 +113,7 @@ class SessionManager {
         // Don't allow closing the last active session
         let activeSessions = sessions.filter { $0.isActive }
         guard activeSessions.count > 1 || !session.isActive else {
-            print("Cannot close the last active session")
+            sessionLogger.info("Ignored request to close the last active session.")
             return
         }
 
@@ -131,7 +133,7 @@ class SessionManager {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
         } catch {
-            print("Failed to close session: \(error)")
+            sessionLogger.error("Failed to close session: \(error.localizedDescription)")
         }
     }
 
@@ -147,7 +149,7 @@ class SessionManager {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
         } catch {
-            print("Failed to delete session: \(error)")
+            sessionLogger.error("Failed to delete session: \(error.localizedDescription)")
         }
     }
 
@@ -158,7 +160,7 @@ class SessionManager {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
         } catch {
-            print("Failed to rename session: \(error)")
+            sessionLogger.error("Failed to rename session: \(error.localizedDescription)")
         }
     }
 
@@ -170,7 +172,7 @@ class SessionManager {
             try modelContext.save()
             loadSessions() // Refresh the sessions array
         } catch {
-            print("Failed to close session: \(error)")
+            sessionLogger.error("Failed to close session: \(error.localizedDescription)")
         }
     }
 
@@ -181,7 +183,7 @@ class SessionManager {
             )
             sessions = try modelContext.fetch(descriptor)
         } catch {
-            print("Failed to load sessions: \(error)")
+            sessionLogger.error("Failed to load sessions: \(error.localizedDescription)")
             sessions = []
         }
     }
@@ -197,7 +199,7 @@ class SessionManager {
             let activeSessions = try modelContext.fetch(descriptor)
             currentSession = activeSessions.first
         } catch {
-            print("Failed to load current session: \(error)")
+            sessionLogger.error("Failed to load current session: \(error.localizedDescription)")
         }
     }
 

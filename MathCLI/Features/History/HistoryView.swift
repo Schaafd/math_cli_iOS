@@ -7,6 +7,154 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
+import UniformTypeIdentifiers
+
+struct MathCLITextDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json, .plainText] }
+
+    var text: String
+
+    init(text: String = "") {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents else {
+            text = ""
+            return
+        }
+        text = String(decoding: data, as: UTF8.self)
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = Data(text.utf8)
+        return FileWrapper(regularFileWithContents: data)
+    }
+}
+
+struct MathCLISessionArchive: Codable {
+    let version: Int
+    let exportedAt: Date
+    let sessions: [MathCLISessionSnapshot]
+
+    @MainActor
+    init(sessions: [Session]) {
+        self.version = 1
+        self.exportedAt = Date()
+        self.sessions = sessions
+            .sorted { $0.createdAt < $1.createdAt }
+            .map(MathCLISessionSnapshot.init(session:))
+    }
+}
+
+struct MathCLISessionSnapshot: Codable {
+    let id: UUID
+    let name: String
+    let createdAt: Date
+    let isActive: Bool
+    let commands: [MathCLIHistoryEntrySnapshot]
+
+    @MainActor
+    init(session: Session) {
+        self.id = session.id
+        self.name = session.name
+        self.createdAt = session.createdAt
+        self.isActive = session.isActive
+        self.commands = session.entries
+            .sorted { $0.timestamp < $1.timestamp }
+            .map(MathCLIHistoryEntrySnapshot.init(entry:))
+    }
+}
+
+struct MathCLIHistoryEntrySnapshot: Codable {
+    let id: UUID
+    let command: String
+    let result: String
+    let timestamp: Date
+    let isBookmarked: Bool
+    let bookmarkName: String?
+
+    @MainActor
+    init(entry: HistoryEntry) {
+        self.id = entry.id
+        self.command = entry.command
+        self.result = entry.result
+        self.timestamp = entry.timestamp
+        self.isBookmarked = entry.isBookmarked
+        self.bookmarkName = entry.bookmarkName
+    }
+}
+
+struct MathCLIAppDataArchive: Codable {
+    let version: Int
+    let exportedAt: Date
+    let variables: [String: String]
+    let functions: [UserFunction]
+    let sessions: [MathCLISessionSnapshot]
+}
+
+enum MathCLIExportFormat {
+    case json
+    case markdown
+}
+
+@MainActor
+func makeMathCLIJSONDocument(from sessions: [Session]) throws -> MathCLITextDocument {
+    let archive = MathCLISessionArchive(sessions: sessions)
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    encoder.dateEncodingStrategy = .iso8601
+    let data = try encoder.encode(archive)
+    return MathCLITextDocument(text: String(decoding: data, as: UTF8.self))
+}
+
+@MainActor
+func makeMathCLIMarkdownDocument(from sessions: [Session]) -> MathCLITextDocument {
+    let dateFormatter = ISO8601DateFormatter()
+    var markdown = "# MathCLI Sessions\n\n"
+    markdown += "Exported: \(dateFormatter.string(from: Date()))\n\n"
+
+    for session in sessions.sorted(by: { $0.createdAt < $1.createdAt }) {
+        markdown += "## \(session.name)\n\n"
+        markdown += "- ID: `\(session.id.uuidString)`\n"
+        markdown += "- Created: \(dateFormatter.string(from: session.createdAt))\n"
+        markdown += "- Active: \(session.isActive ? "yes" : "no")\n\n"
+
+        let entries = session.entries.sorted { $0.timestamp < $1.timestamp }
+        if entries.isEmpty {
+            markdown += "_No commands recorded._\n\n"
+            continue
+        }
+
+        for entry in entries {
+            markdown += "### \(dateFormatter.string(from: entry.timestamp))\n\n"
+            if entry.isBookmarked {
+                markdown += "- Bookmark: \(entry.bookmarkName ?? "yes")\n"
+            }
+            markdown += "```text\n\(entry.command)\n```\n\n"
+            markdown += "Result:\n\n```text\n\(entry.result)\n```\n\n"
+        }
+    }
+
+    return MathCLITextDocument(text: markdown)
+}
+
+@MainActor
+func makeMathCLIAppDataDocument(sessions: [Session]) throws -> MathCLITextDocument {
+    let archive = MathCLIAppDataArchive(
+        version: 1,
+        exportedAt: Date(),
+        variables: VariableStore.shared.exportVariables(),
+        functions: FunctionRegistry.shared.getAllFunctions(),
+        sessions: sessions.sorted { $0.createdAt < $1.createdAt }.map(MathCLISessionSnapshot.init(session:))
+    )
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    encoder.dateEncodingStrategy = .iso8601
+    let data = try encoder.encode(archive)
+    return MathCLITextDocument(text: String(decoding: data, as: UTF8.self))
+}
 
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
@@ -15,6 +163,11 @@ struct HistoryView: View {
     @State private var selectedSession: Session?
     @State private var searchText = ""
     @State private var showBookmarksOnly = false
+    @State private var exportDocument: MathCLITextDocument?
+    @State private var exportFilename = "MathCLI-Sessions.json"
+    @State private var exportContentType: UTType = .json
+    @State private var showClearInactiveConfirmation = false
+    @State private var exportErrorMessage: String?
 
     var activeSessions: [Session] {
         allSessions.filter { $0.isActive }
@@ -79,15 +232,21 @@ struct HistoryView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button {
-                            exportAllSessions()
+                            exportAllSessions(format: .json)
                         } label: {
-                            Label("Export All", systemImage: "square.and.arrow.up")
+                            Label("Export All as JSON", systemImage: "square.and.arrow.up")
+                        }
+
+                        Button {
+                            exportAllSessions(format: .markdown)
+                        } label: {
+                            Label("Export All as Markdown", systemImage: "doc.plaintext")
                         }
 
                         Divider()
 
                         Button(role: .destructive) {
-                            clearInactiveSessions()
+                            showClearInactiveConfirmation = true
                         } label: {
                             Label("Clear Inactive Sessions", systemImage: "trash")
                         }
@@ -95,6 +254,39 @@ struct HistoryView: View {
                         Image(systemName: "ellipsis.circle")
                     }
                 }
+            }
+            .confirmationDialog(
+                "Clear inactive sessions?",
+                isPresented: $showClearInactiveConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Clear Inactive Sessions", role: .destructive) {
+                    clearInactiveSessions()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This deletes all closed sessions and their history.")
+            }
+            .fileExporter(
+                isPresented: Binding(
+                    get: { exportDocument != nil },
+                    set: { if !$0 { exportDocument = nil } }
+                ),
+                document: exportDocument,
+                contentType: exportContentType,
+                defaultFilename: exportFilename
+            ) { result in
+                if case .failure(let error) = result {
+                    exportErrorMessage = error.localizedDescription
+                }
+            }
+            .alert("Export Failed", isPresented: Binding(
+                get: { exportErrorMessage != nil },
+                set: { if !$0 { exportErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(exportErrorMessage ?? "")
             }
         }
     }
@@ -119,9 +311,21 @@ struct HistoryView: View {
         }
     }
 
-    private func exportAllSessions() {
-        // TODO: Implement export functionality
-        print("Export all sessions")
+    private func exportAllSessions(format: MathCLIExportFormat) {
+        do {
+            switch format {
+            case .json:
+                exportDocument = try makeMathCLIJSONDocument(from: allSessions)
+                exportFilename = "MathCLI-Sessions.json"
+                exportContentType = .json
+            case .markdown:
+                exportDocument = makeMathCLIMarkdownDocument(from: allSessions)
+                exportFilename = "MathCLI-Sessions.md"
+                exportContentType = .plainText
+            }
+        } catch {
+            exportErrorMessage = error.localizedDescription
+        }
     }
 }
 
@@ -141,6 +345,7 @@ struct SessionRow: View {
                         Text(session.name)
                             .font(.headline)
                             .foregroundColor(.primary)
+                            .accessibilityIdentifier("SessionRow_\(session.name)")
 
                         if isActive {
                             Image(systemName: "circle.fill")
@@ -192,6 +397,11 @@ struct SessionDetailView: View {
     let session: Session
     @State private var searchText = ""
     @State private var showBookmarksOnly = false
+    @State private var exportDocument: MathCLITextDocument?
+    @State private var exportFilename = "MathCLI-Session.json"
+    @State private var exportContentType: UTType = .json
+    @State private var showClearConfirmation = false
+    @State private var exportErrorMessage: String?
 
     var filteredEntries: [HistoryEntry] {
         var entries = session.entries.sorted(by: { $0.timestamp > $1.timestamp })
@@ -273,13 +483,19 @@ struct SessionDetailView: View {
                     Divider()
 
                     Button {
-                        exportSession()
+                        exportSession(format: .json)
                     } label: {
-                        Label("Export Session", systemImage: "square.and.arrow.up")
+                        Label("Export Session as JSON", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button {
+                        exportSession(format: .markdown)
+                    } label: {
+                        Label("Export Session as Markdown", systemImage: "doc.plaintext")
                     }
 
                     Button(role: .destructive) {
-                        clearSessionHistory()
+                        showClearConfirmation = true
                     } label: {
                         Label("Clear Session History", systemImage: "trash")
                     }
@@ -287,6 +503,39 @@ struct SessionDetailView: View {
                     Image(systemName: "ellipsis.circle")
                 }
             }
+        }
+        .confirmationDialog(
+            "Clear session history?",
+            isPresented: $showClearConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Clear Session History", role: .destructive) {
+                clearSessionHistory()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This deletes every calculation in \(session.name).")
+        }
+        .fileExporter(
+            isPresented: Binding(
+                get: { exportDocument != nil },
+                set: { if !$0 { exportDocument = nil } }
+            ),
+            document: exportDocument,
+            contentType: exportContentType,
+            defaultFilename: exportFilename
+        ) { result in
+            if case .failure(let error) = result {
+                exportErrorMessage = error.localizedDescription
+            }
+        }
+        .alert("Export Failed", isPresented: Binding(
+            get: { exportErrorMessage != nil },
+            set: { if !$0 { exportErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportErrorMessage ?? "")
         }
     }
 
@@ -304,9 +553,24 @@ struct SessionDetailView: View {
         }
     }
 
-    private func exportSession() {
-        // TODO: Implement export functionality
-        print("Export session: \(session.name)")
+    private func exportSession(format: MathCLIExportFormat) {
+        do {
+            let safeName = session.name
+                .replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+            switch format {
+            case .json:
+                exportDocument = try makeMathCLIJSONDocument(from: [session])
+                exportFilename = "\(safeName).json"
+                exportContentType = .json
+            case .markdown:
+                exportDocument = makeMathCLIMarkdownDocument(from: [session])
+                exportFilename = "\(safeName).md"
+                exportContentType = .plainText
+            }
+        } catch {
+            exportErrorMessage = error.localizedDescription
+        }
     }
 
     private func copyToClipboard(_ entry: HistoryEntry) {
@@ -351,6 +615,7 @@ struct HistoryEntryRow: View {
                 .lineLimit(3)
         }
         .padding(.vertical, 4)
+        .accessibilityIdentifier("HistoryEntry_\(entry.command)")
     }
 }
 

@@ -390,7 +390,7 @@ struct MobiusOperation: MathOperation {
     static var category = OperationCategory.numberTheory
 
     static func execute(args: [Any]) throws -> OperationResult {
-        var n = try parseInt(args[0], argumentName: "n")
+        let n = try parseInt(args[0], argumentName: "n")
 
         guard n > 0 else {
             throw OperationError.invalidValue("n must be positive")
